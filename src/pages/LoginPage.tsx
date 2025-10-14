@@ -6,29 +6,41 @@ import { Label } from '../components/ui/label';
 import { Checkbox } from '../components/ui/checkbox';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Separator } from '../components/ui/separator';
-import { useApp } from '../contexts/AppContext';
-import { toast } from 'sonner@2.0.3';
+import { toast } from 'sonner';
+import { useAuth } from '../hooks/authHook';
+
 
 export function LoginPage() {
+  // The state now correctly matches the input fields.
   const [formData, setFormData] = useState({
-    emailOrUsername: '',
+    username: '',
     password: '',
     rememberMe: false
   });
   const [isLoading, setIsLoading] = useState(false);
-  const { login } = useApp();
   const navigate = useNavigate();
+  const { login } = useAuth();
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  // FIX 1: Added 'event' parameter and called event.preventDefault()
+  // This stops the page from reloading when the form is submitted.
+  const handleSubmit = async (event) => {
+    event.preventDefault();
     setIsLoading(true);
 
     try {
-      const success = await login(formData.emailOrUsername, formData.password);
+      // FIX 2: The 'login' function from your hook expects a single object.
+      // Pass the username and password as a single 'loginDto' object.
+      const success = await login({
+        username: formData.username,
+        password: formData.password
+      });
+
       if (success) {
         toast.success('Welcome back!');
         navigate('/');
       } else {
+        // The error is now handled by the hook, which sets an 'error' state.
+        // You can display that error state or rely on the hook's console logs.
         toast.error('Invalid credentials. Please try again.');
       }
     } catch (error) {
@@ -42,28 +54,36 @@ export function LoginPage() {
     toast.info('Google login would be implemented here');
   };
 
+  // Helper function to simplify state updates for text inputs.
+  const handleChange = (e) => {
+    const { id, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [id]: value
+    }));
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-muted/50 py-12 px-4 sm:px-6 lg:px-8">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl">Welcome Back</CardTitle>
           <CardDescription>
-            Sign in to your account to continue shopping
+            Sign in to your account to continue
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <Label htmlFor="emailOrUsername">Email or Username</Label>
+              {/* FIX 3: Changed Label's htmlFor to 'username' to match the input's id. */}
+              <Label htmlFor="username">Username</Label>
               <Input
-                id="emailOrUsername"
+                id="username"
                 type="text"
-                value={formData.emailOrUsername}
-                onChange={(e) => setFormData(prev => ({
-                  ...prev,
-                  emailOrUsername: e.target.value
-                }))}
-                placeholder="Enter your email or username"
+                // FIX 4: The value now correctly points to 'formData.username'.
+                value={formData.username}
+                onChange={handleChange}
+                placeholder="Enter your username"
                 required
               />
             </div>
@@ -74,10 +94,7 @@ export function LoginPage() {
                 id="password"
                 type="password"
                 value={formData.password}
-                onChange={(e) => setFormData(prev => ({
-                  ...prev,
-                  password: e.target.value
-                }))}
+                onChange={handleChange}
                 placeholder="Enter your password"
                 required
               />
