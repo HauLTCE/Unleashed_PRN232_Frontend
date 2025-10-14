@@ -37,58 +37,61 @@ import { NotificationsPage } from './admin/pages/NotificationsPage';
 import { SettingsPage } from './admin/pages/SettingsPage';
 import { ProductDetailPage as AdminProductDetailPage } from './admin/pages/ProductDetailPage';
 import { OrderDetailPage } from './admin/pages/OrderDetailPage';
+import { AuthProvider } from './hooks/authHook';
 
 export default function App() {
   return (
-    <AppProvider>
-      <Router>
-        <Routes>
-          {/* Admin Routes - without Header/Footer */}
-          <Route path="/admin" element={<DashboardPage />} />
-          <Route path="/admin/products" element={<ProductsPage />} />
-          <Route path="/admin/orders" element={<OrdersPage />} />
-          <Route path="/admin/customers" element={<CustomersPage />} />
-          <Route path="/admin/suppliers" element={<SuppliersPage />} />
-          <Route path="/admin/analytics" element={<AnalyticsPage />} />
-          <Route path="/admin/stock" element={<StockPage />} />
-          <Route path="/admin/discounts" element={<DiscountsPage />} />
-          <Route path="/admin/notifications" element={<NotificationsPage />} />
-          <Route path="/admin/settings" element={<SettingsPage />} />
-          <Route path="/admin/products/:id" element={<AdminProductDetailPage />} />
-          <Route path="/admin/orders/:id" element={<OrderDetailPage />} />
-          <Route path="/admin/customers/:id" element={<CustomersPage />} />
-          
-          {/* Customer-facing routes with Header/Footer */}
-          <Route path="/*" element={
-            <div className="min-h-screen flex flex-col">
-              <Header />
-              <main className="flex-1">
-                <Routes>
-                  <Route path="/" element={<Homepage />} />
-                  <Route path="/login" element={<LoginPage />} />
-                  <Route path="/signup" element={<SignupPage />} />
-                  <Route path="/shop" element={<ShopPage />} />
-                  <Route path="/product/:id" element={<ProductDetailPage />} />
-                  <Route path="/cart" element={<CartPage />} />
-                  <Route path="/wishlist" element={<WishlistPage />} />
-                  <Route path="/checkout" element={<CheckoutPage />} />
-                  <Route path="/checkout/success" element={<CheckoutSuccessPage />} />
-                  <Route path="/checkout/failed" element={<CheckoutFailedPage />} />
-                  <Route path="/checkout/pending" element={<CheckoutPendingPage />} />
-                  <Route path="/account" element={<AccountPage />} />
-                  <Route path="/about" element={<AboutPage />} />
-                  <Route path="/contact" element={<ContactPage />} />
-                  <Route path="/403" element={<ForbiddenPage />} />
-                  <Route path="/500" element={<ServerErrorPage />} />
-                  <Route path="*" element={<NotFoundPage />} />
-                </Routes>
-              </main>
-              <Footer />
-            </div>
-          } />
-        </Routes>
-        <Toaster position="top-right" />
-      </Router>
-    </AppProvider>
+    <AuthProvider>
+      <AppProvider>
+        <Router>
+          <Routes>
+            {/* Admin Routes - without Header/Footer */}
+            <Route path="/admin" element={<DashboardPage />} />
+            <Route path="/admin/products" element={<ProductsPage />} />
+            <Route path="/admin/orders" element={<OrdersPage />} />
+            <Route path="/admin/customers" element={<CustomersPage />} />
+            <Route path="/admin/suppliers" element={<SuppliersPage />} />
+            <Route path="/admin/analytics" element={<AnalyticsPage />} />
+            <Route path="/admin/stock" element={<StockPage />} />
+            <Route path="/admin/discounts" element={<DiscountsPage />} />
+            <Route path="/admin/notifications" element={<NotificationsPage />} />
+            <Route path="/admin/settings" element={<SettingsPage />} />
+            <Route path="/admin/products/:id" element={<AdminProductDetailPage />} />
+            <Route path="/admin/orders/:id" element={<OrderDetailPage />} />
+            <Route path="/admin/customers/:id" element={<CustomersPage />} />
+
+            {/* Customer-facing routes with Header/Footer */}
+            <Route path="/*" element={
+              <div className="min-h-screen flex flex-col">
+                <Header />
+                <main className="flex-1">
+                  <Routes>
+                    <Route path="/" element={<Homepage />} />
+                    <Route path="/login" element={<LoginPage />} />
+                    <Route path="/signup" element={<SignupPage />} />
+                    <Route path="/shop" element={<ShopPage />} />
+                    <Route path="/product/:id" element={<ProductDetailPage />} />
+                    <Route path="/cart" element={<CartPage />} />
+                    <Route path="/wishlist" element={<WishlistPage />} />
+                    <Route path="/checkout" element={<CheckoutPage />} />
+                    <Route path="/checkout/success" element={<CheckoutSuccessPage />} />
+                    <Route path="/checkout/failed" element={<CheckoutFailedPage />} />
+                    <Route path="/checkout/pending" element={<CheckoutPendingPage />} />
+                    <Route path="/account" element={<AccountPage />} />
+                    <Route path="/about" element={<AboutPage />} />
+                    <Route path="/contact" element={<ContactPage />} />
+                    <Route path="/403" element={<ForbiddenPage />} />
+                    <Route path="/500" element={<ServerErrorPage />} />
+                    <Route path="*" element={<NotFoundPage />} />
+                  </Routes>
+                </main>
+                <Footer />
+              </div>
+            } />
+          </Routes>
+          <Toaster position="top-right" />
+        </Router>
+      </AppProvider>
+    </AuthProvider>
   );
 }
