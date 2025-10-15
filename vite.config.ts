@@ -75,7 +75,28 @@ export default defineConfig({
         secure: false,
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api\/roles/, ''), // Remove /api/roles
-      }
-    }
+      },
+      // ===== Product service (https://localhost:60448) =====
+      '/api/Products': {
+        target: 'https://localhost:60448',
+        secure: false,
+        changeOrigin: true,
+      },
+      '/api/Categories': {
+        target: 'https://localhost:60448',
+        secure: false,
+        changeOrigin: true,
+      },
+      '/api/Brands': {
+        target: 'https://localhost:60448',
+        secure: false,
+        changeOrigin: true,
+      },
+      '/api/Variations': {
+        target: 'https://localhost:60448',
+        secure: false,
+        changeOrigin: true,
+      },
+    },
   },
 });

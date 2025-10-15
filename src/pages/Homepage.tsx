@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '../components/ui/button';
 import { Card, CardContent } from '../components/ui/card';
@@ -7,11 +7,56 @@ import { ImageWithFallback } from '../components/figma/ImageWithFallback';
 import { Star, ArrowRight } from 'lucide-react';
 import { useApp } from '../contexts/AppContext';
 
-export function Homepage() {
-  const { products, addToCart, addToWishlist, isInWishlist } = useApp();
+// ➊ GỌI API THẬT
+import { getProducts } from '@/services/ProductsService';
 
-  // Get featured products (first 4)
-  const featuredProducts = products.slice(0, 4);
+// Fallback ảnh khi BE không có ảnh variation/brand
+const fallbackImg = (seed) => `https://picsum.photos/seed/${seed}/800/600`;
+
+// Map ProductDetailDTO (BE) → Card model (FE)
+function mapProductToCard(p) {
+  const id = p?.productId; // Guid
+  const name = p?.productName ?? '(No name)';
+  const image =
+    p?.variations?.[0]?.imageUrl ||
+    p?.brand?.brandImageUrl ||
+    fallbackImg(id);
+
+  // Nếu BE chưa có giá ở Product, tạm lấy từ variation đầu
+  const price = p?.variations?.[0]?.price ?? null;
+
+  // Hiển thị “Sale” nếu có giá gốc (chưa có từ BE => để null)
+  const originalPrice = null;
+
+  // Nếu BE chưa trả rating/reviewCount => đặt mặc định/ẩn
+  const rating = 4.5;
+  const reviewCount = 12;
+
+  return { id, name, image, price, originalPrice, rating, reviewCount };
+}
+
+export function Homepage() {
+  const { addToCart, addToWishlist, isInWishlist } = useApp();
+
+  // ➋ STATE cho dữ liệu thật
+  const [items, setItems] = useState([]);      // ProductDetailDTO[]
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState(null);
+
+  // ➌ FETCH từ API /api/Products (proxy DEV)
+  useEffect(() => {
+    setLoading(true);
+    getProducts({ pageNumber: 1, pageSize: 8 }) // lấy 8 sp nổi bật
+      .then((paged) => setItems(paged?.items ?? []))
+      .catch((e) => setErr(e?.message ?? 'Load products failed'))
+      .finally(() => setLoading(false));
+  }, []);
+
+  // ➍ Map sang card FE & lấy 4 sản phẩm nổi bật
+  const featuredCards = useMemo(() => {
+    const mapped = items.map(mapProductToCard);
+    return mapped.slice(0, 4);
+  }, [items]);
 
   return (
     <div className="min-h-screen">
@@ -133,75 +178,95 @@ export function Homepage() {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {featuredProducts.map((product) => (
-              <Card key={product.id} className="group overflow-hidden border hover:shadow-lg transition-all duration-300">
-                <CardContent className="p-0">
-                  <div className="relative">
-                    <ImageWithFallback
-                      src={product.image}
-                      alt={product.name}
-                      className="w-full h-64 object-cover group-hover:scale-105 transition-transform duration-300"
-                    />
-                    {product.originalPrice && (
-                      <Badge className="absolute top-3 left-3 bg-destructive">
-                        Sale
-                      </Badge>
-                    )}
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity"
-                      onClick={() => addToWishlist(product.id)}
-                    >
-                      ♡
-                    </Button>
-                  </div>
-                  <div className="p-4">
-                    <Link to={`/product/${product.id}`}>
-                      <h3 className="font-medium mb-2 hover:text-primary transition-colors">
-                        {product.name}
-                      </h3>
-                    </Link>
-                    <div className="flex items-center mb-2">
-                      <div className="flex items-center">
-                        {[...Array(5)].map((_, i) => (
-                          <Star
-                            key={i}
-                            className={`h-4 w-4 ${
-                              i < Math.floor(product.rating)
-                                ? 'fill-yellow-400 text-yellow-400'
-                                : 'text-gray-300'
-                            }`}
-                          />
-                        ))}
-                      </div>
-                      <span className="text-sm text-muted-foreground ml-2">
-                        ({product.reviewCount})
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-2">
-                        <span className="font-semibold">${product.price}</span>
-                        {product.originalPrice && (
-                          <span className="text-sm text-muted-foreground line-through">
-                            ${product.originalPrice}
-                          </span>
-                        )}
-                      </div>
+          {/* LOADING / ERROR */}
+          {loading && (
+            <div className="text-center py-10">Đang tải sản phẩm nổi bật…</div>
+          )}
+          {err && !loading && (
+            <div className="text-center py-10 text-red-600">{err}</div>
+          )}
+
+          {!loading && !err && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {featuredCards.map((product) => (
+                <Card key={product.id} className="group overflow-hidden border hover:shadow-lg transition-all duration-300">
+                  <CardContent className="p-0">
+                    <div className="relative">
+                      <ImageWithFallback
+                        src={product.image}
+                        alt={product.name}
+                        className="w-full h-64 object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
+                      {product.originalPrice && (
+                        <Badge className="absolute top-3 left-3 bg-destructive">
+                          Sale
+                        </Badge>
+                      )}
                       <Button
+                        variant="secondary"
                         size="sm"
-                        onClick={() => addToCart(product.id)}
-                        className="opacity-0 group-hover:opacity-100 transition-opacity"
+                        className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity"
+                        onClick={() => addToWishlist?.(product.id)}
                       >
-                        Add to Cart
+                        ♡
                       </Button>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+                    <div className="p-4">
+                      <Link to={`/product/${product.id}`}>
+                        <h3 className="font-medium mb-2 hover:text-primary transition-colors">
+                          {product.name}
+                        </h3>
+                      </Link>
+
+                      {/* Rating (giữ UI cũ; có thể ẩn nếu không cần) */}
+                      <div className="flex items-center mb-2">
+                        <div className="flex items-center">
+                          {[...Array(5)].map((_, i) => (
+                            <Star
+                              key={i}
+                              className={`h-4 w-4 ${
+                                i < Math.floor(product.rating)
+                                  ? 'fill-yellow-400 text-yellow-400'
+                                  : 'text-gray-300'
+                              }`}
+                            />
+                          ))}
+                        </div>
+                        <span className="text-sm text-muted-foreground ml-2">
+                          ({product.reviewCount})
+                        </span>
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-2">
+                          {product.price != null ? (
+                            <span className="font-semibold">${product.price}</span>
+                          ) : (
+                            <span className="text-sm text-muted-foreground">Contact</span>
+                          )}
+                          {product.originalPrice && (
+                            <span className="text-sm text-muted-foreground line-through">
+                              ${product.originalPrice}
+                            </span>
+                          )}
+                        </div>
+                        <Button
+                          size="sm"
+                          // Tuỳ app: nếu addToCart yêu cầu product object/ID, sửa tại đây:
+                          // 1) Nếu cần ID: onClick={() => addToCart(product.id)}
+                          // 2) Nếu cần cả object: onClick={() => addToCart(product)}
+                          onClick={() => addToCart?.(product.id)}
+                          className="opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          Add to Cart
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
 
           <div className="text-center mt-12">
             <Button size="lg" variant="outline" asChild>
