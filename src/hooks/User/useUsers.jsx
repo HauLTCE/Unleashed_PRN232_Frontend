@@ -42,26 +42,6 @@ export const useUsers = () => {
         }
     };
 
-    // Function to update a user
-    const editUser = async (id, updateUserDto) => {
-        setLoading(true);
-        try {
-            await userService.updateUser(id, updateUserDto);
-            // Update the user in the local state
-            setUsers((prevUsers) =>
-                prevUsers.map((user) =>
-                    user.userId === id ? { ...user, ...updateUserDto } : user
-                )
-            );
-        } catch (err) {
-            setError("Failed to update user.");
-            console.error(err);
-            throw err;
-        } finally {
-            setLoading(false);
-        }
-    };
-
     // Function to remove a user
     const removeUser = async (id) => {
         setLoading(true);
@@ -85,7 +65,6 @@ export const useUsers = () => {
         error,
         fetchUsers, // You can expose this to allow manual refetching
         addUser,
-        editUser,
         removeUser,
     };
 };
