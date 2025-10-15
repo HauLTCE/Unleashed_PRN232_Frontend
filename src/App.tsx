@@ -37,7 +37,9 @@ import { NotificationsPage } from './admin/pages/NotificationsPage';
 import { SettingsPage } from './admin/pages/SettingsPage';
 import { ProductDetailPage as AdminProductDetailPage } from './admin/pages/ProductDetailPage';
 import { OrderDetailPage } from './admin/pages/OrderDetailPage';
-import { AuthProvider } from './hooks/authHook';
+import { AuthProvider } from './hooks/User/useAuth';
+import { CustomerDetailPage } from './admin/pages/CustomerDetailPage';
+import { CreateEmployeePage } from './admin/pages/CreateEmployeePage';
 
 export default function App() {
   return (
@@ -49,7 +51,7 @@ export default function App() {
             <Route path="/admin" element={<DashboardPage />} />
             <Route path="/admin/products" element={<ProductsPage />} />
             <Route path="/admin/orders" element={<OrdersPage />} />
-            <Route path="/admin/customers" element={<CustomersPage />} />
+            <Route path="/admin/users" element={<CustomersPage />} />
             <Route path="/admin/suppliers" element={<SuppliersPage />} />
             <Route path="/admin/analytics" element={<AnalyticsPage />} />
             <Route path="/admin/stock" element={<StockPage />} />
@@ -58,7 +60,8 @@ export default function App() {
             <Route path="/admin/settings" element={<SettingsPage />} />
             <Route path="/admin/products/:id" element={<AdminProductDetailPage />} />
             <Route path="/admin/orders/:id" element={<OrderDetailPage />} />
-            <Route path="/admin/customers/:id" element={<CustomersPage />} />
+            <Route path="/admin/users/:userId" element={<CustomerDetailPage />} />
+            <Route path="/admin/users/create" element={<CreateEmployeePage />} />
 
             {/* Customer-facing routes with Header/Footer */}
             <Route path="/*" element={

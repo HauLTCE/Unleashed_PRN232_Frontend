@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { AdminLayout } from '../components/AdminLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui/table';
@@ -6,206 +6,208 @@ import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '../../components/ui/avatar';
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '../../components/ui/pagination';
-import { Search, Eye, Mail, Trash2 } from 'lucide-react';
-import { mockCustomers, Customer } from '../data/mockData';
+import { Search, Eye, Mail, Trash2, PlusCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useUsers } from '../../hooks/User/useUsers';
 
 const ITEMS_PER_PAGE = 10;
 
-export function CustomersPage() {
-  const [customers, setCustomers] = React.useState<Customer[]>(mockCustomers);
-  const [searchQuery, setSearchQuery] = React.useState('');
-  const [currentPage, setCurrentPage] = React.useState(1);
+type DisplayUser = {
+  id: string;
+  fullName: string;
+  username: string;
+  email: string;
+  avatar: string;
+  status: boolean;
+  role: string;
+};
 
-  // Filter customers
-  const filteredCustomers = React.useMemo(() => {
-    return customers.filter(customer => {
-      const matchesSearch = customer.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                           customer.email.toLowerCase().includes(searchQuery.toLowerCase());
-      
-      return matchesSearch;
-    });
+// --- Sub-component for the page header and controls ---
+const PageHeader = ({ searchQuery, onSearchChange }) => (
+  <div>
+    <h1 className="text-3xl font-bold">Customers Management</h1>
+    <p className="text-muted-foreground">Manage your customer base and relationships</p>
+    <div className="mt-4 flex items-center justify-between gap-4">
+      <div className="relative flex-1 max-w-sm">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4" />
+        <Input
+          placeholder="Search by name, email, or username..."
+          value={searchQuery}
+          onChange={onSearchChange}
+          className="pl-10"
+        />
+      </div>
+      <Button asChild>
+        <Link to="/admin/users/create">
+          <PlusCircle className="mr-2 h-4 w-4" />
+          Create Employee
+        </Link>
+      </Button>
+    </div>
+  </div>
+);
+
+// --- Sub-component for rendering the customer table ---
+const CustomerTable = ({ customers, onDeleteCustomer, loading }) => (
+  <Table>
+    <TableHeader>
+      <TableRow>
+        <TableHead>Customer</TableHead>
+        <TableHead>Status</TableHead>
+        <TableHead>Role</TableHead>
+        <TableHead className="text-right">Actions</TableHead>
+      </TableRow>
+    </TableHeader>
+    <TableBody>
+      {customers.length > 0 ? (
+        customers.map((customer) => (
+          <TableRow key={customer.id}>
+            <TableCell>
+              <div className="flex items-center gap-3">
+                <Avatar className="h-10 w-10">
+                  <AvatarImage src={customer.avatar} alt={customer.fullName} />
+                  <AvatarFallback>{customer.fullName.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+                </Avatar>
+                <div>
+                  <div className="font-medium">{customer.fullName}</div>
+                  <div className="text-sm text-muted-foreground">{customer.email}</div>
+                </div>
+              </div>
+            </TableCell>
+            <TableCell>
+              <span className={`px-2 py-1 text-xs font-medium rounded-full ${customer.status ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
+                {customer.status ? 'Active' : 'Disabled'}
+              </span>
+            </TableCell>
+            <TableCell className="text-sm text-muted-foreground">{customer.role}</TableCell>
+            <TableCell>
+              <div className="flex items-center justify-end gap-2">
+                <Button variant="ghost" size="icon" asChild disabled={loading}>
+                  <Link to={`/admin/users/${customer.id}`}><Eye className="h-4 w-4" /></Link>
+                </Button>
+                <Button variant="ghost" size="icon" asChild disabled={loading}>
+                  <a href={`mailto:${customer.email}`}><Mail className="h-4 w-4" /></a>
+                </Button>
+                <Button variant="ghost" size="icon" onClick={() => onDeleteCustomer(customer.id)} disabled={loading}>
+                  <Trash2 className="h-4 w-4 text-red-500" />
+                </Button>
+              </div>
+            </TableCell>
+          </TableRow>
+        ))
+      ) : (
+        <TableRow>
+          <TableCell colSpan={4} className="h-24 text-center">
+            No customers found.
+          </TableCell>
+        </TableRow>
+      )}
+    </TableBody>
+  </Table>
+);
+
+// --- Sub-component for pagination controls ---
+const CustomerPagination = ({ totalPages, currentPage, onPageChange }) => {
+  if (totalPages <= 1) return null;
+
+  return (
+    <div className="mt-4">
+      <Pagination>
+        <PaginationContent>
+          <PaginationItem>
+            <PaginationPrevious onClick={() => onPageChange(currentPage - 1)} className={currentPage === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'} />
+          </PaginationItem>
+          {Array.from({ length: totalPages }, (_, i) => (
+            <PaginationItem key={i + 1}>
+              <PaginationLink onClick={() => onPageChange(i + 1)} isActive={currentPage === i + 1} className="cursor-pointer">
+                {i + 1}
+              </PaginationLink>
+            </PaginationItem>
+          ))}
+          <PaginationItem>
+            <PaginationNext onClick={() => onPageChange(currentPage + 1)} className={currentPage === totalPages ? 'pointer-events-none opacity-50' : 'cursor-pointer'} />
+          </PaginationItem>
+        </PaginationContent>
+      </Pagination>
+    </div>
+  );
+};
+
+
+// --- Main Page Component ---
+export function CustomersPage() {
+  const { users: apiUsers, loading, error, fetchUsers, removeUser } = useUsers();
+  const [searchQuery, setSearchQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+
+  useEffect(() => {
+    fetchUsers();
+  }, [fetchUsers]);
+
+  // Memoize the mapped customers to avoid re-computation on every render
+  const customers: DisplayUser[] = useMemo(() => {
+    if (!Array.isArray(apiUsers)) return [];
+    return apiUsers.map(user => ({
+      id: user.userId,
+      fullName: user.userFullname,
+      username: user.userUsername,
+      email: user.userEmail,
+      avatar: user.userImage,
+      status: user.isUserEnabled,
+      role: user.roleName,
+    }));
+  }, [apiUsers]);
+
+  // Memoize the filtered customers to avoid re-filtering when unrelated state changes
+  const filteredCustomers = useMemo(() => {
+    if (!searchQuery) return customers;
+    const lowercasedQuery = searchQuery.toLowerCase();
+    return customers.filter(customer =>
+      customer.fullName.toLowerCase().includes(lowercasedQuery) ||
+      customer.email.toLowerCase().includes(lowercasedQuery) ||
+      customer.username.toLowerCase().includes(lowercasedQuery)
+    );
   }, [customers, searchQuery]);
 
-  // Paginate customers
+  // Calculate pagination details
   const totalPages = Math.ceil(filteredCustomers.length / ITEMS_PER_PAGE);
   const paginatedCustomers = filteredCustomers.slice(
     (currentPage - 1) * ITEMS_PER_PAGE,
     currentPage * ITEMS_PER_PAGE
   );
 
-  const handleDeleteCustomer = (id: string) => {
-    setCustomers(customers.filter(c => c.id !== id));
+  const handleDeleteCustomer = async (id: string) => {
+    if (window.confirm("Are you sure you want to delete this customer?")) {
+      try {
+        await removeUser(id);
+      } catch (err) {
+        alert("Failed to delete customer. Please try again.");
+      }
+    }
   };
 
-  // Calculate stats
-  const stats = React.useMemo(() => {
-    const total = filteredCustomers.length;
-    const totalRevenue = filteredCustomers.reduce((sum, c) => sum + c.totalSpent, 0);
-    const avgOrderValue = totalRevenue / filteredCustomers.reduce((sum, c) => sum + c.ordersCount, 0) || 0;
-    const newThisMonth = filteredCustomers.filter(c => {
-      const joinDate = new Date(c.joinDate);
-      const now = new Date();
-      return joinDate.getMonth() === now.getMonth() && joinDate.getFullYear() === now.getFullYear();
-    }).length;
-
-    return { total, totalRevenue, avgOrderValue, newThisMonth };
-  }, [filteredCustomers]);
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(e.target.value);
+    setCurrentPage(1); // Reset to first page on new search
+  };
 
   return (
     <AdminLayout>
       <div className="space-y-6">
-        {/* Page Header */}
-        <div>
-          <h1 className="text-3xl font-bold">Customers Management</h1>
-          <p className="text-muted-foreground">Manage your customer base and relationships</p>
-        </div>
+        <PageHeader searchQuery={searchQuery} onSearchChange={handleSearchChange} />
 
-        {/* Stats Cards */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <Card>
-            <CardContent className="pt-6">
-              <div className="text-2xl font-bold">{stats.total}</div>
-              <p className="text-xs text-muted-foreground">Total Customers</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="text-2xl font-bold">{stats.newThisMonth}</div>
-              <p className="text-xs text-muted-foreground">New This Month</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="text-2xl font-bold">${stats.totalRevenue.toFixed(0)}</div>
-              <p className="text-xs text-muted-foreground">Total Revenue</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="text-2xl font-bold">${stats.avgOrderValue.toFixed(2)}</div>
-              <p className="text-xs text-muted-foreground">Avg. Order Value</p>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Search */}
-        <Card>
-          <CardContent className="pt-6">
-            <div className="relative max-w-md">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-              <Input
-                placeholder="Search customers..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Customers Table */}
         <Card>
           <CardHeader>
             <CardTitle>Customers ({filteredCustomers.length})</CardTitle>
           </CardHeader>
           <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Customer</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Join Date</TableHead>
-                  <TableHead>Orders</TableHead>
-                  <TableHead>Total Spent</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {paginatedCustomers.map((customer) => (
-                  <TableRow key={customer.id}>
-                    <TableCell>
-                      <div className="flex items-center gap-3">
-                        <Avatar className="h-10 w-10">
-                          <AvatarImage src={customer.avatar} alt={customer.name} />
-                          <AvatarFallback>
-                            {customer.name.split(' ').map(n => n[0]).join('')}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <div className="font-medium">{customer.name}</div>
-                          <div className="text-sm text-muted-foreground">ID: {customer.id}</div>
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>{customer.email}</TableCell>
-                    <TableCell>{new Date(customer.joinDate).toLocaleDateString()}</TableCell>
-                    <TableCell>
-                      <div className="text-center">
-                        <div className="font-medium">{customer.ordersCount}</div>
-                        <div className="text-xs text-muted-foreground">orders</div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="font-medium">${customer.totalSpent.toFixed(2)}</div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Button variant="ghost" size="sm" asChild>
-                          <Link to={`/admin/customers/${customer.id}`}>
-                            <Eye className="h-4 w-4" />
-                          </Link>
-                        </Button>
-                        <Button variant="ghost" size="sm" asChild>
-                          <a href={`mailto:${customer.email}`}>
-                            <Mail className="h-4 w-4" />
-                          </a>
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="sm"
-                          onClick={() => handleDeleteCustomer(customer.id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-
-            {/* Pagination */}
-            {totalPages > 1 && (
-              <div className="mt-4">
-                <Pagination>
-                  <PaginationContent>
-                    <PaginationItem>
-                      <PaginationPrevious 
-                        onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-                        className={currentPage === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
-                      />
-                    </PaginationItem>
-                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                      <PaginationItem key={page}>
-                        <PaginationLink
-                          onClick={() => setCurrentPage(page)}
-                          isActive={currentPage === page}
-                          className="cursor-pointer"
-                        >
-                          {page}
-                        </PaginationLink>
-                      </PaginationItem>
-                    ))}
-                    <PaginationItem>
-                      <PaginationNext 
-                        onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-                        className={currentPage === totalPages ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
-                      />
-                    </PaginationItem>
-                  </PaginationContent>
-                </Pagination>
-              </div>
+            {loading && <p className="text-center py-24">Loading customers...</p>}
+            {error && <p className="text-center py-24 text-red-500">{error}</p>}
+            {!loading && !error && (
+              <>
+                <CustomerTable customers={paginatedCustomers} onDeleteCustomer={handleDeleteCustomer} loading={loading} />
+                <CustomerPagination totalPages={totalPages} currentPage={currentPage} onPageChange={setCurrentPage} />
+              </>
             )}
           </CardContent>
         </Card>

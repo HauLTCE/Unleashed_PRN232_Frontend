@@ -68,13 +68,13 @@ export default defineConfig({
         target: 'https://localhost:6256', // Your service
         secure: false,
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api\/users/, ''), // Remove /api/auth
+        rewrite: (path) => path.replace(/^\/api\/users/, ''), // Remove /api/users
       },
       '/api/Roles': {
         target: 'https://localhost:6256', // Your auth service
         secure: false,
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api\/roles/, ''), // Remove /api/auth
+        rewrite: (path) => path.replace(/^\/api\/roles/, ''), // Remove /api/roles
       }
     }
   },
