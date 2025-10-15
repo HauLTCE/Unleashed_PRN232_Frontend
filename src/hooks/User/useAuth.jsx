@@ -6,19 +6,19 @@ const AuthContext = createContext(null);
 
 // Create the provider component
 export const AuthProvider = ({ children }) => {
-    const [user, setUser] = useState(null);
+    const [userId, setUserId] = useState(null);
     const [token, setToken] = useState(() => localStorage.getItem('authToken')); // Use function to read only once
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState(null);
 
+
     const logout = useCallback(() => {
-        // Clear state and local storage
-        setUser(null);
-        setToken(null);
-        setIsAuthenticated(false);
         localStorage.removeItem('authToken');
         localStorage.removeItem('authUser');
+        setToken(null);
+        setUserId(null);
+        setIsAuthenticated(false);
     }, []);
 
     useEffect(() => {
@@ -26,20 +26,22 @@ export const AuthProvider = ({ children }) => {
             if (token) {
                 try {
                     await authService.checkAuth();
-                    const storedUser = localStorage.getItem('authUser');
-                    if (storedUser) {
-                        setUser(JSON.parse(storedUser));
+                    const storedUserId = localStorage.getItem('authUser');
+                    if (storedUserId) {
+                        setUserId(JSON.parse(storedUserId));
                         setIsAuthenticated(true);
                     } else {
-                        // If user data is missing, the state is inconsistent. Log out.
                         logout();
                     }
                 } catch (err) {
                     console.error("Auth check failed, token is invalid or expired.", err);
-                    logout(); // Clear out invalid token and user data
+                    logout(); // Clear invalid token
+                } finally {
+                    setIsLoading(false);
                 }
+            } else {
+                setIsLoading(false);
             }
-            setIsLoading(false);
         };
 
         verifyAuth();
@@ -50,22 +52,17 @@ export const AuthProvider = ({ children }) => {
         setError(null);
         try {
             const response = await authService.login(loginDto);
-            const { token: Token, user: Userid } = response.data;
-            console.log(Token)
-            localStorage.setItem('authToken', Token);
-            localStorage.setItem('authUser', JSON.stringify(Userid));
-
-            setUser(Userid);
-            setToken(Token); // This will trigger the useEffect to re-verify
-            setIsAuthenticated(true);
+            const { token: newToken, userId: newUserId } = response.data;
+            localStorage.setItem('authToken', newToken);
+            localStorage.setItem('authUser', JSON.stringify(newUserId));
+            setToken(newToken);
             return true;
         } catch (err) {
-            const errorMessage = err.response?.data || err.message || "Login failed.";
+            const errorMessage = err.response?.data?.message || err.message || "Login failed.";
             setError(errorMessage);
             console.error(errorMessage);
+            setIsLoading(false); // Stop loading on failure
             return false;
-        } finally {
-            setIsLoading(false);
         }
     };
 
@@ -76,7 +73,7 @@ export const AuthProvider = ({ children }) => {
             await authService.register(createUserDto);
             return true;
         } catch (err) {
-            const errorMessage = err.response?.data || err.message || "Registration failed.";
+            const errorMessage = err.response?.data?.message || err.message || "Registration failed.";
             setError(errorMessage);
             console.error(errorMessage);
             return false;
@@ -86,7 +83,7 @@ export const AuthProvider = ({ children }) => {
     };
 
     const value = {
-        user,
+        userId,
         token,
         isAuthenticated,
         isLoading,

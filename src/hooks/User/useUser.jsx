@@ -30,5 +30,21 @@ export const useUser = (userId) => {
         fetchUser();
     }, [userId]); // This effect re-runs whenever the userId prop changes
 
-    return { user, loading, error };
+    // Function to update a user
+    const editUser = async (id, updateUserDto) => {
+        setLoading(true);
+        try {
+            await userService.updateUser(id, updateUserDto);
+        } catch (err) {
+            setError("Failed to update user.");
+            console.error(err);
+            throw err;
+        } finally {
+            setLoading(false);
+        }
+    };
+
+
+
+    return { user, loading, editUser, error };
 };

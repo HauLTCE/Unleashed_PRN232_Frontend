@@ -7,6 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '../../components/ui/avatar'
 import { Badge } from '../../components/ui/badge';
 import { ArrowLeft, User, Mail, Phone, MapPin, Calendar, KeyRound, Clock } from 'lucide-react';
 import { useUser } from '../../hooks/User/useUser';
+import { useUsers } from '../../hooks/User/useUsers';
 
 // Helper component for displaying detail items
 const DetailItem = ({ icon, label, value }) => (
@@ -22,6 +23,7 @@ const DetailItem = ({ icon, label, value }) => (
 export function CustomerDetailPage() {
     const { userId } = useParams();
     const { user, loading, error } = useUser(userId);
+    const { editUser } = useUsers();
 
     // Shows a loading skeleton or message
     if (loading) {
@@ -42,7 +44,7 @@ export function CustomerDetailPage() {
                     <h2 className="text-2xl font-bold mb-2">Customer Not Found</h2>
                     <p className="text-muted-foreground mb-4">{error}</p>
                     <Button asChild>
-                        <Link to="/admin/customers">
+                        <Link to="/admin/users">
                             <ArrowLeft className="mr-2 h-4 w-4" /> Back to Customers
                         </Link>
                     </Button>
