@@ -1,14 +1,14 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { 
-  Home, 
-  Package, 
-  ShoppingCart, 
-  Users, 
-  BarChart3, 
-  Warehouse, 
-  Tag, 
-  Bell, 
+import {
+  Home,
+  Package,
+  ShoppingCart,
+  Users,
+  BarChart3,
+  Warehouse,
+  Tag,
+  Bell,
   Settings,
   ChevronLeft,
   ChevronRight,
@@ -26,7 +26,7 @@ const navigation = [
   { name: 'Dashboard', href: '/admin', icon: Home },
   { name: 'Products', href: '/admin/products', icon: Package },
   { name: 'Orders', href: '/admin/orders', icon: ShoppingCart },
-  { name: 'Customers', href: '/admin/customers', icon: Users },
+  { name: 'Users', href: '/admin/users', icon: Users },
   { name: 'Suppliers', href: '/admin/suppliers', icon: Truck },
   { name: 'Analytics', href: '/admin/analytics', icon: BarChart3 },
   { name: 'Stock', href: '/admin/stock', icon: Warehouse },
@@ -68,8 +68,8 @@ export function AdminSidebar({ isCollapsed, onToggle }: AdminSidebarProps) {
               to={item.href}
               className={cn(
                 "flex items-center gap-3 px-3 py-2 rounded-md transition-colors",
-                isActive 
-                  ? "bg-sidebar-primary text-sidebar-primary-foreground" 
+                isActive
+                  ? "bg-sidebar-primary text-sidebar-primary-foreground"
                   : "text-sidebar-foreground hover:bg-sidebar-accent",
                 isCollapsed && "justify-center"
               )}

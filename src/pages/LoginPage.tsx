@@ -7,7 +7,7 @@ import { Checkbox } from '../components/ui/checkbox';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Separator } from '../components/ui/separator';
 import { toast } from 'sonner';
-import { useAuth } from '../hooks/authHook';
+import { useAuth } from '../hooks/User/useAuth';
 
 
 export function LoginPage() {

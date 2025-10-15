@@ -6,20 +6,21 @@ import { Label } from '../components/ui/label';
 import { Checkbox } from '../components/ui/checkbox';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Separator } from '../components/ui/separator';
-import { useApp } from '../contexts/AppContext';
 import { toast } from 'sonner@2.0.3';
+import { useAuth } from '../hooks/User/useAuth';
 
 export function SignupPage() {
   const [formData, setFormData] = useState({
-    fullName: '',
-    username: '',
-    email: '',
-    password: '',
-    confirmPassword: '',
-    agreeToTerms: false
+    UserFullname: '',
+    UserUsername: '',
+    UserEmail: '',
+    UserPassword: '',
+    ConfirmPassword: '',
+    agreeToTerms: false,
+    RoleId: 2
   });
   const [isLoading, setIsLoading] = useState(false);
-  const { register } = useApp();
+  const { register } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -41,10 +42,12 @@ export function SignupPage() {
 
     try {
       const success = await register({
-        fullName: formData.fullName,
-        username: formData.username,
-        email: formData.email,
-        password: formData.password
+        UserFullname: formData.UserFullname,
+        UserUsername: formData.UserUsername,
+        UserEmail: formData.UserEmail,
+        UserPassword: formData.UserPassword,
+        ConfirmPassword: formData.ConfirmPassword,
+        RoleId: 2
       });
 
       if (success) {
@@ -80,10 +83,10 @@ export function SignupPage() {
               <Input
                 id="fullName"
                 type="text"
-                value={formData.fullName}
+                value={formData.UserFullname}
                 onChange={(e) => setFormData(prev => ({
                   ...prev,
-                  fullName: e.target.value
+                  UserFullname: e.target.value
                 }))}
                 placeholder="Enter your full name"
                 required
@@ -95,10 +98,10 @@ export function SignupPage() {
               <Input
                 id="username"
                 type="text"
-                value={formData.username}
+                value={formData.UserUsername}
                 onChange={(e) => setFormData(prev => ({
                   ...prev,
-                  username: e.target.value
+                  UserUsername: e.target.value
                 }))}
                 placeholder="Choose a username"
                 required
@@ -110,10 +113,10 @@ export function SignupPage() {
               <Input
                 id="email"
                 type="email"
-                value={formData.email}
+                value={formData.UserEmail}
                 onChange={(e) => setFormData(prev => ({
                   ...prev,
-                  email: e.target.value
+                  UserEmail: e.target.value
                 }))}
                 placeholder="Enter your email"
                 required
@@ -125,10 +128,10 @@ export function SignupPage() {
               <Input
                 id="password"
                 type="password"
-                value={formData.password}
+                value={formData.UserPassword}
                 onChange={(e) => setFormData(prev => ({
                   ...prev,
-                  password: e.target.value
+                  UserPassword: e.target.value
                 }))}
                 placeholder="Create a password"
                 required
@@ -143,7 +146,7 @@ export function SignupPage() {
                 value={formData.confirmPassword}
                 onChange={(e) => setFormData(prev => ({
                   ...prev,
-                  confirmPassword: e.target.value
+                  ConfirmPassword: e.target.value
                 }))}
                 placeholder="Confirm your password"
                 required
