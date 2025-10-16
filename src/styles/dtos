@@ -1,28 +1,27 @@
-// ====== Common ======
+// types.ts
 export type PagedResult<T> = {
-  items: T[];            // .NET: Items
-  totalCount: number;    // TotalCount
-  pageNumber: number;    // PageNumber
-  pageSize: number;      // PageSize
-  totalPages: number;    // TotalPages (tính sẵn từ BE)
-  hasPrevious: boolean;  // HasPrevious
-  hasNext: boolean;      // HasNext
+  items: T[];
+  totalCount: number;
+  pageNumber: number;
+  pageSize: number;
+  totalPages: number;
+  hasPrevious: boolean;
+  hasNext: boolean;
 };
 
 export type PaginationParams = {
   pageNumber?: number;   // default 1
   pageSize?: number;     // default 10 (max 50)
-  search?: string;       // .NET: Search 
+  search?: string;       // .NET: Search
 };
 
-// ====== Brands ======
 export type BrandDetailDTO = {
   brandId: number;
   brandName?: string | null;
   brandDescription?: string | null;
   brandImageUrl?: string | null;
   brandWebsiteUrl?: string | null;
-  brandCreatedAt?: string | null; // DateTimeOffset?
+  brandCreatedAt?: string | null;
   brandUpdatedAt?: string | null;
 };
 
@@ -32,10 +31,8 @@ export type CreateBrandDTO = {
   brandImageUrl?: string | null;
   brandWebsiteUrl?: string | null;
 };
-
 export type UpdateBrandDTO = CreateBrandDTO;
 
-// ====== Categories ======
 export type CategoryDetailDTO = {
   categoryId: number;
   categoryName?: string | null;
@@ -44,47 +41,51 @@ export type CategoryDetailDTO = {
   categoryCreatedAt?: string | null;
   categoryUpdatedAt?: string | null;
 };
-
 export type CreateCategoryDTO = {
   categoryName?: string | null;
   categoryDescription?: string | null;
   categoryImageUrl?: string | null;
 };
-
 export type UpdateCategoryDTO = CreateCategoryDTO;
 
-// ====== Others ======
 export type ColorDTO = {
   colorId: number;
   colorName?: string | null;
   colorHexCode?: string | null;
 };
-
 export type SizeDTO = {
   sizeId: number;
   sizeName?: string | null;
 };
-
 export type ProductStatusDTO = {
   productStatusId: number;
   productStatusName?: string | null;
 };
 
-// ====== Variations ======
-// BE có namespace VariationDTOs nhưng Sếp chưa dán chi tiết field.
-// Em khai báo an toàn, optional hết (không phá vỡ compile FE).
-export type VariationDetailDTO = {
-  variationId?: number;          // đoán
-  productId?: string;            // Guid
-  colorId?: number | null;
+export type CreateVariationDTO = {
   sizeId?: number | null;
-  sku?: string | null;
-  price?: number | null;
-  stock?: number | null;
-  imageUrl?: string | null;      
+  colorId?: number | null;
+  variationImage?: string | null;
+  variationPrice?: number | null;
+};
+export type UpdateVariationDTO = {
+  variationId: number; // int
+  sizeId?: number | null;
+  colorId?: number | null;
+  variationImage?: string | null;
+  variationPrice?: number | null;
+};
+export type VariationDetailDTO = {
+  variationId: number;
+  productId?: string | null; // Guid?
+  sizeId?: number | null;
+  colorId?: number | null;
+  variationImage?: string | null;
+  variationPrice?: number | null;
+  size?: SizeDTO | null;
+  color?: ColorDTO | null;
 };
 
-// ====== Products ======
 export type CreateProductDTO = {
   productName?: string | null;
   productCode?: string | null;
@@ -92,11 +93,21 @@ export type CreateProductDTO = {
   brandId?: number | null;
   productStatusId?: number | null;
   categoryIds?: number[] | null;
-  variations?: any[] | null; 
+  variations?: CreateVariationDTO[] | null;
+};
+export type UpdateProductDTO = {
+  productId?: string | null; // Guid?
+  productName?: string | null;
+  productCode?: string | null;
+  productDescription?: string | null;
+  brandId?: number | null;
+  productStatusId?: number | null;
+  categoryIds?: number[] | null;
+  variations?: UpdateVariationDTO[] | null;
 };
 
 export type ProductDetailDTO = {
-  productId: string;                // Guid
+  productId: string; // Guid
   productName?: string | null;
   productCode?: string | null;
   productDescription?: string | null;
@@ -104,31 +115,8 @@ export type ProductDetailDTO = {
   productStatusId?: number | null;
   productCreatedAt?: string | null;
   productUpdatedAt?: string | null;
-
   brand?: BrandDetailDTO | null;
   productStatus?: ProductStatusDTO | null;
   categories?: CategoryDetailDTO[] | null;
   variations?: VariationDetailDTO[] | null;
-};
-
-// Endpoint list (nếu BE đổi sang list-optimized)
-export type ProductListDTO = {
-  productId: string;
-  productName?: string | null;
-  productCode?: string | null;
-  brandName?: string | null;
-  productStatusName?: string | null;
-  variationImage?: string | null;
-  variationPrice?: number | null;
-};
-
-export type UpdateProductDTO = {
-  productId?: string | null;        // Guid?
-  productName?: string | null;
-  productCode?: string | null;
-  productDescription?: string | null;
-  brandId?: number | null;
-  productStatusId?: number | null;
-  categoryIds?: number[] | null;
-  variations?: any[] | null;        
 };
