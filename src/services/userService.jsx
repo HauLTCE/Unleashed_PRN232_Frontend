@@ -5,14 +5,19 @@ import { apiClient } from "./ApiClient";
  * Corresponds to: GET /api/Userss
  * @returns {Promise<Array>} A promise that resolves to an array of Users DTOs.
  */
-export const getAllUsers = async () => {
-    try {
-        const response = await apiClient.get('/Users');
-        return response.data;
-    } catch (error) {
-        console.error("Error fetching all Userss:", error);
-        throw error;
+export const getAllUsers = async (pageNumber = 1, pageSize = 10, searchQuery = '') => {
+    const params = new URLSearchParams({
+        pageNumber: pageNumber.toString(),
+        pageSize: pageSize.toString(),
+    });
+
+    // Only add the searchQuery to the URL if it has a value
+    if (searchQuery) {
+        params.append('searchQuery', searchQuery);
     }
+
+    const response = await apiClient.get(`/Users?${params.toString()}`);
+    return response.data;
 };
 
 /**
