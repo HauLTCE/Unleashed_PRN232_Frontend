@@ -8,7 +8,7 @@ import { Label } from '../../components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
 import { ArrowLeft } from 'lucide-react';
 import { useUsers } from '../../hooks/User/useUsers';
-import { useRoles } from '../../hooks/User/Role/useRole';
+import { useRoles } from '../../hooks/Role/useRole';
 
 // 1. Updated initial state for the form
 const initialFormData = {

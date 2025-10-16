@@ -106,26 +106,32 @@ const CustomerTable = ({ customers, onDeleteCustomer, loading }) => (
   </Table>
 );
 
-// --- Sub-component for pagination controls ---
-const CustomerPagination = ({ totalPages, currentPage, onPageChange }) => {
-  if (totalPages <= 1) return null;
+const CustomerPagination = ({ pagination, onPageChange }) => {
+  if (pagination.totalPages <= 1) return null;
 
   return (
     <div className="mt-4">
       <Pagination>
-        <PaginationContent>
-          <PaginationItem>
-            <PaginationPrevious onClick={() => onPageChange(currentPage - 1)} className={currentPage === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'} />
+        {/* The parent container now controls the spacing for all children */}
+        <PaginationContent className="space-x-4">
+          <PaginationItem> {/* No margin class needed here */}
+            <PaginationPrevious
+              onClick={() => onPageChange(pagination.currentPage - 1)}
+              className={!pagination.hasPrevious ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+            />
           </PaginationItem>
-          {Array.from({ length: totalPages }, (_, i) => (
-            <PaginationItem key={i + 1}>
-              <PaginationLink onClick={() => onPageChange(i + 1)} isActive={currentPage === i + 1} className="cursor-pointer">
-                {i + 1}
-              </PaginationLink>
-            </PaginationItem>
-          ))}
+
           <PaginationItem>
-            <PaginationNext onClick={() => onPageChange(currentPage + 1)} className={currentPage === totalPages ? 'pointer-events-none opacity-50' : 'cursor-pointer'} />
+            <PaginationLink>
+              Page {pagination.currentPage} of {pagination.totalPages}
+            </PaginationLink>
+          </PaginationItem>
+
+          <PaginationItem>
+            <PaginationNext
+              onClick={() => onPageChange(pagination.currentPage + 1)}
+              className={!pagination.hasNext ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+            />
           </PaginationItem>
         </PaginationContent>
       </Pagination>
@@ -136,15 +142,29 @@ const CustomerPagination = ({ totalPages, currentPage, onPageChange }) => {
 
 // --- Main Page Component ---
 export function CustomersPage() {
-  const { users: apiUsers, loading, error, fetchUsers, removeUser } = useUsers();
+  // 1. Destructure the new 'pagination' object from the hook
+  const { users: apiUsers, pagination, loading, error, fetchUsers, removeUser } = useUsers();
+
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
 
+  // 2. Debounce the search input to avoid excessive API calls
   useEffect(() => {
-    fetchUsers();
-  }, [fetchUsers]);
+    const timerId = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+      setCurrentPage(1); // Reset to page 1 when search query changes
+    }, 300); // 300ms delay
 
-  // Memoize the mapped customers to avoid re-computation on every render
+    return () => {
+      clearTimeout(timerId);
+    };
+  }, [searchQuery]);
+  useEffect(() => {
+    fetchUsers(currentPage, ITEMS_PER_PAGE, debouncedSearchQuery);
+  }, [fetchUsers, currentPage, debouncedSearchQuery]);
+
+  // Memoize the mapped customers. This part is still useful.
   const customers: DisplayUser[] = useMemo(() => {
     if (!Array.isArray(apiUsers)) return [];
     return apiUsers.map(user => ({
@@ -158,55 +178,40 @@ export function CustomersPage() {
     }));
   }, [apiUsers]);
 
-  // Memoize the filtered customers to avoid re-filtering when unrelated state changes
-  const filteredCustomers = useMemo(() => {
-    if (!searchQuery) return customers;
-    const lowercasedQuery = searchQuery.toLowerCase();
-    return customers.filter(customer =>
-      customer.fullName.toLowerCase().includes(lowercasedQuery) ||
-      customer.email.toLowerCase().includes(lowercasedQuery) ||
-      customer.username.toLowerCase().includes(lowercasedQuery)
-    );
-  }, [customers, searchQuery]);
-
-  // Calculate pagination details
-  const totalPages = Math.ceil(filteredCustomers.length / ITEMS_PER_PAGE);
-  const paginatedCustomers = filteredCustomers.slice(
-    (currentPage - 1) * ITEMS_PER_PAGE,
-    currentPage * ITEMS_PER_PAGE
-  );
+  // 4. REMOVED client-side filtering and pagination. The `customers` array is now the final data to display.
 
   const handleDeleteCustomer = async (id: string) => {
     if (window.confirm("Are you sure you want to delete this customer?")) {
-      try {
-        await removeUser(id);
-      } catch (err) {
+      const success = await removeUser(id);
+      if (success) {
+        // 5. Refresh the data on the current page after a successful delete
+        fetchUsers(currentPage, ITEMS_PER_PAGE, debouncedSearchQuery);
+      } else {
         alert("Failed to delete customer. Please try again.");
       }
     }
   };
 
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchQuery(e.target.value);
-    setCurrentPage(1); // Reset to first page on new search
-  };
-
   return (
     <AdminLayout>
       <div className="space-y-6">
-        <PageHeader searchQuery={searchQuery} onSearchChange={handleSearchChange} />
+        <PageHeader searchQuery={searchQuery} onSearchChange={(e) => setSearchQuery(e.target.value)} />
 
         <Card>
           <CardHeader>
-            <CardTitle>Customers ({filteredCustomers.length})</CardTitle>
+            {/* 6. Display total count from the pagination object */}
+            <CardTitle>Customers ({pagination.totalCount})</CardTitle>
           </CardHeader>
           <CardContent>
-            {loading && <p className="text-center py-24">Loading customers...</p>}
+            {loading && customers.length === 0 && <p className="text-center py-24">Loading customers...</p>}
             {error && <p className="text-center py-24 text-red-500">{error}</p>}
-            {!loading && !error && (
+            {!error && (
               <>
-                <CustomerTable customers={paginatedCustomers} onDeleteCustomer={handleDeleteCustomer} loading={loading} />
-                <CustomerPagination totalPages={totalPages} currentPage={currentPage} onPageChange={setCurrentPage} />
+                {/* 7. Pass the directly mapped `customers` array. No more slicing. */}
+                <CustomerTable customers={customers} onDeleteCustomer={handleDeleteCustomer} loading={loading} />
+
+                {/* 8. Pass the pagination object and the page change handler */}
+                <CustomerPagination pagination={pagination} onPageChange={setCurrentPage} />
               </>
             )}
           </CardContent>

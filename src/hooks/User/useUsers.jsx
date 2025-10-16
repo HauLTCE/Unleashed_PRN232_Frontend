@@ -3,19 +3,34 @@ import * as userService from '../../services/userService';
 
 export const useUsers = () => {
 
-
-
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
+    const [pagination, setPagination] = useState({
+        currentPage: 1,
+        totalPages: 1,
+        pageSize: 10,
+        totalCount: 0,
+        hasPrevious: false,
+        hasNext: false,
+    });
 
-    // Fetch all users and update state
-    const fetchUsers = useCallback(async () => {
+    const fetchUsers = useCallback(async (page = 1, size = 10, searchTerm = '') => {
         setLoading(true);
         setError(null);
         try {
-            const data = await userService.getAllUsers();
-            setUsers(Array.isArray(data) ? data : []);
+            // Pass the searchTerm to the updated service method
+            const data = await userService.getAllUsers(page, size, searchTerm);
+
+            setUsers(data.items || []);
+            setPagination({
+                currentPage: data.currentPage,
+                totalPages: data.totalPages,
+                pageSize: data.pageSize,
+                totalCount: data.totalCount,
+                hasPrevious: data.hasPrevious,
+                hasNext: data.hasNext,
+            });
         } catch (err) {
             setError("Failed to fetch users. Please try again later.");
             console.error(err);
@@ -62,6 +77,7 @@ export const useUsers = () => {
     return {
         users,
         loading,
+        pagination,
         error,
         fetchUsers, // You can expose this to allow manual refetching
         addUser,
