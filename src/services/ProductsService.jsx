@@ -3,9 +3,10 @@ import { apiClient } from './ApiClient';
 /**
  * GET /api/Products
  * @param {{ pageNumber?:number, pageSize?:number, search?:string }} params
+ * @param {{ signal?: AbortSignal }} config
  */
-export const getProducts = async (params = {}) => {
-  const response = await apiClient.get('/Products', { params });
+export const getProducts = async (params = {}, config = {}) => {
+  const response = await apiClient.get('/Products', { params, ...config });
   return response.data; // PagedResult<ProductDetailDTO>
 };
 

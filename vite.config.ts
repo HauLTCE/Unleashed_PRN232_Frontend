@@ -78,14 +78,14 @@ export default defineConfig({
       },
       // ===== Product service (https://localhost:60448) =====
       '/api/Products': {
-        //target: 'https://localhost:60448',
-        target: 'https://localhost:55962',
+        target: 'https://localhost:60448',
+        //target: 'https://localhost:55962',
         secure: false,
         changeOrigin: true,
       },
       '/api/Categories': {
-        //target: 'https://localhost:60448',
-        target: 'https://localhost:55962',
+        target: 'https://localhost:60448',
+       //target: 'https://localhost:55962',
         secure: false,
         changeOrigin: true,
       },
@@ -96,8 +96,8 @@ export default defineConfig({
         changeOrigin: true,
       },
       '/api/Variations': {
-        //target: 'https://localhost:60448',
-        target: 'https://localhost:55962',
+        target: 'https://localhost:60448',
+        //target: 'https://localhost:55962',
         secure: false,
         changeOrigin: true,
       },

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -9,176 +9,188 @@ import { Checkbox } from '../components/ui/checkbox';
 import { ImageWithFallback } from '../components/figma/ImageWithFallback';
 import { Star, Search, Filter, Heart, ShoppingCart } from 'lucide-react';
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '../components/ui/pagination';
-
-// gọi API thật
-import { getProducts } from '@/services/ProductsService';
-// vẫn xài các action của app (wishlist/cart)
 import { useApp } from '../contexts/AppContext';
 
-// fallback ảnh khi BE thiếu
-const fallbackImg = (seed) => `https://picsum.photos/seed/${seed}/800/600`;
+// 🧠 Dữ liệu thật (server-side, không dùng react-query)
+import { usePagedProducts } from '@/hooks/usePagedProducts';
 
-// map ProductDetailDTO -> model UI đang dùng
-function mapProduct(p) {
-  const id = p?.productId;
-  const name = p?.productName ?? '(No name)';
-  const description = p?.productDescription ?? '';
-  const image = p?.variations?.[0]?.imageUrl || p?.brand?.brandImageUrl || fallbackImg(id);
-  const price = p?.variations?.[0]?.price ?? null;
-  const originalPrice = null; // BE chưa có -> để null
-  const rating = 4.5;         // tạm thời, ẩn nếu không cần
-  const reviewCount = 12;     // tạm thời, ẩn nếu không cần
+// ---- Helpers kiểu dữ liệu (khớp với types.ts của Sếp) ----
+type VariationDetailDTO = {
+  variationId: number;
+  productId?: string | null;
+  sizeId?: number | null;
+  colorId?: number | null;
+  variationImage?: string | null;
+  variationPrice?: number | null;
+};
 
-  // category: lấy tên đầu tiên (nếu có)
-  const category = p?.categories?.[0]?.categoryName ?? 'Uncategorized';
+type CategoryDetailDTO = {
+  categoryId: number;
+  categoryName?: string | null;
+};
 
-  // colors/sizes từ variations (nếu chỉ có id -> hiển thị "#<id>")
-  const colors = Array.from(
-    new Set(
-      (p?.variations ?? [])
-        .map(v => v?.colorId)
-        .filter(v => v != null)
-        .map(id => `#${id}`)
-    )
-  );
-  const sizes = Array.from(
-    new Set(
-      (p?.variations ?? [])
-        .map(v => v?.sizeId)
-        .filter(v => v != null)
-        .map(id => `#${id}`)
-    )
-  );
+type ProductDetailDTO = {
+  productId: string;
+  productName?: string | null;
+  productCode?: string | null;
+  productDescription?: string | null;
+  brandId?: number | null;
+  productStatusId?: number | null;
+  productCreatedAt?: string | null;
+  productUpdatedAt?: string | null;
+  categories?: CategoryDetailDTO[] | null;
+  variations?: VariationDetailDTO[] | null;
+  // Những field UI dưới đây không có trong DTO => sẽ fallback
+  rating?: number;
+  reviewCount?: number;
+  originalPrice?: number;
+};
 
-  return { id, name, description, image, price, originalPrice, rating, reviewCount, category, colors, sizes, raw: p };
+// ---- Utils: lấy giá & ảnh từ variations ----
+function getMinPrice(p: ProductDetailDTO): number | null {
+  const prices = (p.variations ?? [])
+    .map(v => (v.variationPrice ?? null))
+    .filter((x): x is number => typeof x === 'number');
+  if (!prices.length) return null;
+  return Math.min(...prices);
+}
+
+function getPrimaryImage(p: ProductDetailDTO): string {
+  const img = (p.variations ?? []).find(v => v.variationImage)?.variationImage;
+  return img || 'https://picsum.photos/seed/placeholder/800/600';
+}
+
+function getCategoryNames(p: ProductDetailDTO): string[] {
+  return (p.categories ?? [])
+    .map(c => c.categoryName)
+    .filter((x): x is string => !!x);
 }
 
 export function ShopPage() {
   const { addToCart, addToWishlist, removeFromWishlist, isInWishlist } = useApp();
 
-  // --------- STATE (server-side pagination + client filters) ----------
-  const [serverPage, setServerPage] = useState(1);   // trang đang fetch từ BE
-  const [pageSize, setPageSize] = useState(20);      // số item/ trang (<= 50 theo BE)
-  const [searchQuery, setSearchQuery] = useState(''); // gửi lên BE qua ?search
-  const [loading, setLoading] = useState(true);
-  const [err, setErr] = useState(null);
-
-  // dữ liệu từ BE
-  const [serverItems, setServerItems] = useState([]);  // ProductDetailDTO[]
-  const [serverTotalPages, setServerTotalPages] = useState(1);
-  const [serverTotalCount, setServerTotalCount] = useState(0);
-
-  // filter client-side
-  const [selectedCategory, setSelectedCategory] = useState('all');
-  const [selectedColors, setSelectedColors] = useState([]);
-  const [selectedSizes, setSelectedSizes] = useState([]);
-  const [priceRange, setPriceRange] = useState([0, 200]);
+  // ── State: search / category(multi) / sort / page
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategoryIds, setSelectedCategoryIds] = useState<number[]>([]); // [] = All
   const [sortBy, setSortBy] = useState('featured');
 
-  // fetch dữ liệu thật từ BE khi serverPage / pageSize / searchQuery đổi
+  // page từ server
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 20;
+
+  // gọi API (đã debounce trong hook)
+  const { data, loading, error } = usePagedProducts({
+    pageNumber: currentPage,
+    pageSize,
+    search: searchQuery,
+  });
+
+  // an toàn rỗng
+  const items: ProductDetailDTO[] = data?.items ?? [];
+  const totalPages = data?.totalPages ?? 1;
+  const totalCount = data?.totalCount ?? 0;
+
+  // Tính min/max price để UI slider hợp lý (trên trang hiện tại)
+  const pagePrices = items
+    .map(getMinPrice)
+    .filter((x): x is number => typeof x === 'number');
+
+  const pageMinPrice = pagePrices.length ? Math.floor(Math.min(...pagePrices)) : 0;
+  const pageMaxPrice = pagePrices.length ? Math.ceil(Math.max(...pagePrices)) : 200;
+
+  const [priceMax, setPriceMax] = useState<number>(pageMaxPrice);
+
+  // Đồng bộ slider khi trang mới trả về
   useEffect(() => {
-    setLoading(true);
-    getProducts({ pageNumber: serverPage, pageSize, search: searchQuery })
-      .then((paged) => {
-        setServerItems(paged?.items ?? []);
-        setServerTotalPages(paged?.totalPages ?? 1);
-        setServerTotalCount(paged?.totalCount ?? 0);
-      })
-      .catch((e) => setErr(e?.message ?? 'Load products failed'))
-      .finally(() => setLoading(false));
-  }, [serverPage, pageSize, searchQuery]);
+    setPriceMax(pageMaxPrice);
+  }, [pageMaxPrice]);
 
-  // chuẩn hóa thành model UI
-  const normalized = useMemo(() => serverItems.map(mapProduct), [serverItems]);
+  // Danh sách category (từ trang hiện tại)
+  const categoriesOnPage = useMemo(() => {
+    const map = new Map<number, string>();
+    items.forEach(p => {
+      (p.categories ?? []).forEach(c => {
+        if (c?.categoryId != null && c?.categoryName) {
+          map.set(c.categoryId, c.categoryName);
+        }
+      });
+    });
+    // Sắp xếp A→Z
+    return [...map.entries()]
+      .map(([id, name]) => ({ id, name }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [items]);
 
-  // build bộ lọc (categories/colors/sizes) từ dữ liệu trang hiện tại
-  const categories = useMemo(() => {
-    return Array.from(new Set(normalized.map(p => p.category))).filter(Boolean);
-  }, [normalized]);
+  // Helpers cho checkbox
+  const isAllCategories = selectedCategoryIds.length === 0;
+  const toggleCategory = (id: number) => {
+    setSelectedCategoryIds(prev => {
+      const has = prev.includes(id);
+      const next = has ? prev.filter(x => x !== id) : [...prev, id];
+      return next;
+    });
+    setCurrentPage(1);
+  };
+  const setAllCategories = () => {
+    setSelectedCategoryIds([]);
+    setCurrentPage(1);
+  };
 
-  const availableColors = useMemo(() => {
-    return Array.from(new Set(normalized.flatMap(p => p.colors))).filter(Boolean);
-  }, [normalized]);
+  // Lọc client-side (trên page hiện tại): Category (multi) + Price
+  const filteredOnPage = useMemo(() => {
+    const filtered = items.filter(p => {
+      // Category (OR nhiều category; [] = All)
+      const byCat =
+        isAllCategories
+          ? true
+          : (p.categories ?? []).some(c => c?.categoryId != null && selectedCategoryIds.includes(c.categoryId!));
 
-  const availableSizes = useMemo(() => {
-    return Array.from(new Set(normalized.flatMap(p => p.sizes))).filter(Boolean);
-  }, [normalized]);
+      // Price by min variation price
+      const minPrice = getMinPrice(p);
+      const byPrice =
+        minPrice == null ? false : minPrice >= pageMinPrice && minPrice <= priceMax;
 
-  // áp dụng filter + sort (trên trang hiện tại)
-  const filteredAndSortedProducts = useMemo(() => {
-    let filtered = normalized.filter(product => {
-      // search cục bộ (ngoài search server) để khớp UI hiện tại
-      const matchesSearch =
-        (product.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (product.description || '').toLowerCase().includes(searchQuery.toLowerCase());
-
-      // category
-      const matchesCategory = selectedCategory === 'all' || product.category === selectedCategory;
-
-      // color
-      const matchesColor = selectedColors.length === 0 ||
-        selectedColors.some(color => product.colors.includes(color));
-
-      // size
-      const matchesSize = selectedSizes.length === 0 ||
-        selectedSizes.some(size => product.sizes.includes(size));
-
-      // price
-      const price = product.price ?? 0;
-      const matchesPrice = price >= priceRange[0] && price <= priceRange[1];
-
-      return matchesSearch && matchesCategory && matchesColor && matchesSize && matchesPrice;
+      return byCat && byPrice;
     });
 
-    // sort
+    // Sort (giữ nguyên các lựa chọn UI)
     filtered.sort((a, b) => {
       switch (sortBy) {
         case 'price-low':
-          return (a.price ?? 0) - (b.price ?? 0);
+          return (getMinPrice(a) ?? Infinity) - (getMinPrice(b) ?? Infinity);
         case 'price-high':
-          return (b.price ?? 0) - (a.price ?? 0);
+          return (getMinPrice(b) ?? -Infinity) - (getMinPrice(a) ?? -Infinity);
         case 'rating':
           return (b.rating ?? 0) - (a.rating ?? 0);
-        case 'newest': {
-          const ad = a.raw?.productCreatedAt ? new Date(a.raw.productCreatedAt).getTime() : 0;
-          const bd = b.raw?.productCreatedAt ? new Date(b.raw.productCreatedAt).getTime() : 0;
-          return bd - ad;
-        }
+        case 'newest':
+          // Nếu có createdAt: ưu tiên createdAt desc, nếu không dùng productId để tạm đại diện
+          return String(b.productId).localeCompare(String(a.productId));
         default:
           return 0;
       }
     });
 
     return filtered;
-  }, [normalized, searchQuery, selectedCategory, selectedColors, selectedSizes, priceRange, sortBy]);
+  }, [items, isAllCategories, selectedCategoryIds, priceMax, pageMinPrice, sortBy]);
 
-  // Vì phân trang đang là server-side, trang hiện tại chính là filtered trên page đó
-  const paginatedProducts = filteredAndSortedProducts;
+  const showingCount = filteredOnPage.length;
 
-  // handlers
-  const handleColorChange = (color, checked) => {
-    setSelectedColors(prev => checked ? [...prev, color] : prev.filter(c => c !== color));
+  const onClickWishlist = (productId: string) => {
+    if (isInWishlist(productId)) removeFromWishlist(productId);
+    else addToWishlist(productId);
   };
-  const handleSizeChange = (size, checked) => {
-    setSelectedSizes(prev => checked ? [...prev, size] : prev.filter(s => s !== size));
-  };
+
   const clearFilters = () => {
-    setSelectedCategory('all');
-    setSelectedColors([]);
-    setSelectedSizes([]);
-    setPriceRange([0, 200]);
+    setSearchQuery('');
+    setAllCategories(); // về All
+    setPriceMax(pageMaxPrice);
     setSortBy('featured');
-  };
-
-  // khi search thay đổi -> fetch lại trang 1
-  const onSearchChange = (e) => {
-    setSearchQuery(e.target.value);
-    setServerPage(1);
+    setCurrentPage(1);
   };
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      {/* Page Header */}
+      {/* Header */}
       <div className="mb-8">
         <h1 className="text-3xl font-bold mb-4">Shop</h1>
         <p className="text-muted-foreground">
@@ -186,18 +198,26 @@ export function ShopPage() {
         </p>
       </div>
 
-      {/* Search and Sort Bar */}
+      {/* Search + Sort */}
       <div className="flex flex-col md:flex-row gap-4 mb-8">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Search products..."
             value={searchQuery}
-            onChange={onSearchChange}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              setCurrentPage(1);
+            }}
             className="pl-10"
           />
         </div>
-        <Select value={sortBy} onValueChange={setSortBy}>
+        <Select
+          value={sortBy}
+          onValueChange={(v) => {
+            setSortBy(v);
+          }}
+        >
           <SelectTrigger className="w-full md:w-48">
             <SelectValue placeholder="Sort by" />
           </SelectTrigger>
@@ -212,7 +232,7 @@ export function ShopPage() {
       </div>
 
       <div className="flex flex-col lg:flex-row gap-8">
-        {/* Filters Sidebar */}
+        {/* Sidebar: Category + Price */}
         <div className="lg:w-64 space-y-6">
           <div className="bg-card p-6 rounded-lg border">
             <div className="flex items-center justify-between mb-4">
@@ -225,238 +245,227 @@ export function ShopPage() {
               </Button>
             </div>
 
-            {/* Category Filter */}
+            {/* Category (Checkbox multiple) */}
             <div className="mb-6">
               <h4 className="font-medium mb-3">Category</h4>
-              <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                <SelectTrigger>
-                  <SelectValue placeholder="All Categories" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Categories</SelectItem>
-                  {categories.map(category => (
-                    <SelectItem key={category} value={category}>
-                      {category}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
 
-            {/* Color Filter */}
-            <div className="mb-6">
-              <h4 className="font-medium mb-3">Colors</h4>
-              <div className="space-y-2">
-                {availableColors.map(color => (
-                  <div key={color} className="flex items-center space-x-2">
-                    <Checkbox
-                      id={`color-${color}`}
-                      checked={selectedColors.includes(color)}
-                      onCheckedChange={(checked) => handleColorChange(color, !!checked)}
-                    />
-                    <label htmlFor={`color-${color}`} className="text-sm">
-                      {color}
+              {/* All Categories */}
+              <label className="flex items-center gap-3 mb-2 cursor-pointer">
+                <Checkbox
+                  checked={isAllCategories}
+                  onCheckedChange={(checked) => {
+                    if (checked) setAllCategories();
+                    else setSelectedCategoryIds([]); // vẫn coi như All
+                  }}
+                />
+                <span>All Categories</span>
+              </label>
+
+              <div className="max-h-64 overflow-auto pr-1 space-y-2">
+                {categoriesOnPage.map(c => {
+                  const checked = selectedCategoryIds.includes(c.id);
+                  return (
+                    <label key={c.id} className="flex items-center gap-3 cursor-pointer">
+                      <Checkbox
+                        checked={checked}
+                        onCheckedChange={() => {
+                          // Nếu đang ở All -> chuyển sang chỉ chọn category này
+                          if (isAllCategories) {
+                            setSelectedCategoryIds([c.id]);
+                            setCurrentPage(1);
+                          } else {
+                            toggleCategory(c.id);
+                          }
+                        }}
+                      />
+                      <span>{c.name}</span>
                     </label>
-                  </div>
-                ))}
+                  );
+                })}
+                {categoriesOnPage.length === 0 && (
+                  <p className="text-xs text-muted-foreground">No category on this page</p>
+                )}
               </div>
             </div>
 
-            {/* Size Filter */}
-            <div className="mb-6">
-              <h4 className="font-medium mb-3">Sizes</h4>
-              <div className="grid grid-cols-3 gap-2">
-                {availableSizes.map(size => (
-                  <div key={size} className="flex items-center space-x-2">
-                    <Checkbox
-                      id={`size-${size}`}
-                      checked={selectedSizes.includes(size)}
-                      onCheckedChange={(checked) => handleSizeChange(size, !!checked)}
-                    />
-                    <label htmlFor={`size-${size}`} className="text-sm">
-                      {size}
-                    </label>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Price Range */}
+            {/* Price (max-only trên trang hiện tại) */}
             <div>
-              <h4 className="font-medium mb-3">Price Range</h4>
+              <h4 className="font-medium mb-3">Price (per page)</h4>
               <div className="space-y-2">
-                <div className="flex items-center space-x-2">
-                  <span className="text-sm">${priceRange[0]}</span>
-                  <span className="text-sm">-</span>
-                  <span className="text-sm">${priceRange[1]}</span>
+                <div className="flex items-center justify-between text-sm">
+                  <span>${pageMinPrice}</span>
+                  <span>${priceMax}</span>
                 </div>
                 <input
                   type="range"
-                  min="0"
-                  max="200"
-                  value={priceRange[1]}
-                  onChange={(e) => setPriceRange([priceRange[0], parseInt(e.target.value, 10)])}
+                  min={pageMinPrice}
+                  max={pageMaxPrice}
+                  value={priceMax}
+                  onChange={(e) => {
+                    setPriceMax(parseInt(e.target.value, 10));
+                    setCurrentPage(1);
+                  }}
                   className="w-full"
                 />
+                <p className="text-xs text-muted-foreground">
+                  Showing products with min-variation price ≤ ${priceMax}
+                </p>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Products Grid */}
+        {/* Content */}
         <div className="flex-1">
-          <div className="mb-4 flex items-center justify-between">
-            <p className="text-muted-foreground">
-              {/* Hiển thị số trên trang hiện tại + tổng số trang từ BE */}
-              {loading
-                ? 'Loading...'
-                : `Showing ${paginatedProducts.length} products • Page ${serverPage}/${serverTotalPages} (server)`}
-            </p>
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">Per page:</span>
-              <Select value={String(pageSize)} onValueChange={(v) => { setPageSize(parseInt(v, 10)); setServerPage(1); }}>
-                <SelectTrigger className="w-24"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="12">12</SelectItem>
-                  <SelectItem value="20">20</SelectItem>
-                  <SelectItem value="32">32</SelectItem>
-                  <SelectItem value="50">50</SelectItem>
-                </SelectContent>
-              </Select>
+          {/* State messages */}
+          {error && (
+            <div className="mb-4 text-red-600 text-sm">
+              {String(error)}
             </div>
-          </div>
-
-          {/* LOADING / ERROR */}
-          {err && !loading && (
-            <div className="text-center py-10 text-red-600">{err}</div>
+          )}
+          {loading && (
+            <div className="mb-4 text-sm text-muted-foreground">Loading products…</div>
           )}
 
-          {loading ? (
-            <div className="text-center py-10">Đang tải sản phẩm…</div>
-          ) : (
-            <>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                {paginatedProducts.map((product) => (
-                  <Card key={product.id} className="group overflow-hidden border hover:shadow-lg transition-all duration-300">
-                    <CardContent className="p-0">
-                      <div className="relative">
-                        <ImageWithFallback
-                          src={product.image}
-                          alt={product.name}
-                          className="w-full h-64 object-cover group-hover:scale-105 transition-transform duration-300"
-                        />
-                        {product.originalPrice && (
-                          <Badge className="absolute top-3 left-3 bg-destructive">
-                            Sale
-                          </Badge>
-                        )}
+          <div className="mb-4 flex items-center justify-between">
+            <p className="text-muted-foreground">
+              Showing {showingCount} on this page / Total {totalCount} products (page {data?.pageNumber ?? currentPage}/{totalPages})
+            </p>
+          </div>
+
+          {/* Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            {filteredOnPage.map((product) => {
+              const img = getPrimaryImage(product);
+              const price = getMinPrice(product);
+              const rating = product.rating ?? 0;
+              const reviewCount = product.reviewCount ?? 0;
+
+              return (
+                <Card key={product.productId} className="group overflow-hidden border hover:shadow-lg transition-all duration-300">
+                  <CardContent className="p-0">
+                    <div className="relative">
+                      <ImageWithFallback
+                        src={img}
+                        alt={product.productName ?? 'Product'}
+                        className="w-full h-64 object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
+                      {/* Nếu có originalPrice thì hiện Sale */}
+                      {product.originalPrice && (
+                        <Badge className="absolute top-3 left-3 bg-destructive">Sale</Badge>
+                      )}
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity"
+                        onClick={() => onClickWishlist(product.productId)}
+                      >
+                        <Heart className={`h-4 w-4 ${isInWishlist(product.productId) ? 'fill-red-500 text-red-500' : ''}`} />
+                      </Button>
+                    </div>
+
+                    <div className="p-4">
+                      <Link to={`/product/${product.productId}`}>
+                        <h3 className="font-medium mb-2 hover:text-primary transition-colors">
+                          {product.productName ?? 'Unnamed Product'}
+                        </h3>
+                      </Link>
+
+                      <div className="flex items-center mb-2">
+                        <div className="flex items-center">
+                          {[...Array(5)].map((_, i) => (
+                            <Star
+                              key={i}
+                              className={`h-4 w-4 ${
+                                i < Math.floor(rating)
+                                  ? 'fill-yellow-400 text-yellow-400'
+                                  : 'text-gray-300'
+                              }`}
+                            />
+                          ))}
+                        </div>
+                        <span className="text-sm text-muted-foreground ml-2">
+                          ({reviewCount})
+                        </span>
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-2">
+                          <span className="font-semibold">
+                            {price != null ? `$${price}` : '—'}
+                          </span>
+                          {product.originalPrice && (
+                            <span className="text-sm text-muted-foreground line-through">
+                              ${product.originalPrice}
+                            </span>
+                          )}
+                        </div>
                         <Button
-                          variant="secondary"
                           size="sm"
-                          className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity"
-                          onClick={() => {
-                            // tuỳ app context của Sếp lưu wishlist theo id/object
-                            if (isInWishlist?.(product.id)) {
-                              removeFromWishlist?.(product.id);
-                            } else {
-                              addToWishlist?.(product.id);
-                            }
-                          }}
+                          onClick={() => addToCart(product.productId)}
+                          className="opacity-0 group-hover:opacity-100 transition-opacity"
+                          disabled={price == null}
                         >
-                          <Heart className={`h-4 w-4 ${isInWishlist?.(product.id) ? 'fill-red-500 text-red-500' : ''}`} />
+                          <ShoppingCart className="h-4 w-4" />
                         </Button>
                       </div>
-                      <div className="p-4">
-                        <Link to={`/product/${product.id}`}>
-                          <h3 className="font-medium mb-2 hover:text-primary transition-colors">
-                            {product.name}
-                          </h3>
-                        </Link>
-                        {/* Rating (giữ UI cũ; ẩn nếu không cần) */}
-                        <div className="flex items-center mb-2">
-                          <div className="flex items-center">
-                            {[...Array(5)].map((_, i) => (
-                              <Star
-                                key={i}
-                                className={`h-4 w-4 ${
-                                  i < Math.floor(product.rating)
-                                    ? 'fill-yellow-400 text-yellow-400'
-                                    : 'text-gray-300'
-                                }`}
-                              />
-                            ))}
-                          </div>
-                          <span className="text-sm text-muted-foreground ml-2">
-                            ({product.reviewCount})
-                          </span>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-2">
-                            {product.price != null ? (
-                              <span className="font-semibold">${product.price}</span>
-                            ) : (
-                              <span className="text-sm text-muted-foreground">Contact</span>
-                            )}
-                            {product.originalPrice && (
-                              <span className="text-sm text-muted-foreground line-through">
-                                ${product.originalPrice}
-                              </span>
-                            )}
-                          </div>
-                          <Button
-                            size="sm"
-                            onClick={() => addToCart?.(product.id)}
-                            className="opacity-0 group-hover:opacity-100 transition-opacity"
-                          >
-                            <ShoppingCart className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
 
-              {/* Server-side Pagination */}
-              {serverTotalPages > 1 && (
-                <Pagination>
-                  <PaginationContent>
-                    <PaginationItem>
-                      <PaginationPrevious
-                        href="#"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          if (serverPage > 1) setServerPage(serverPage - 1);
-                        }}
-                      />
-                    </PaginationItem>
-                    {Array.from({ length: serverTotalPages }).map((_, i) => (
-                      <PaginationItem key={i}>
-                        <PaginationLink
-                          href="#"
-                          isActive={serverPage === i + 1}
-                          onClick={(e) => {
-                            e.preventDefault();
-                            setServerPage(i + 1);
-                          }}
-                        >
-                          {i + 1}
-                        </PaginationLink>
-                      </PaginationItem>
-                    ))}
-                    <PaginationItem>
-                      <PaginationNext
-                        href="#"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          if (serverPage < serverTotalPages) setServerPage(serverPage + 1);
-                        }}
-                      />
-                    </PaginationItem>
-                  </PaginationContent>
-                </Pagination>
-              )}
-            </>
+                      {/* Tag category dưới tên */}
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {getCategoryNames(product).map((cn) => (
+                          <Badge key={cn} variant="outline">{cn}</Badge>
+                        ))}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+
+          {/* Pagination server-side */}
+          {totalPages > 1 && (
+            <Pagination>
+              <PaginationContent>
+                <PaginationItem>
+                  <PaginationPrevious
+                    href="#"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setCurrentPage((p) => Math.max(1, p - 1));
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }}
+                  />
+                </PaginationItem>
+
+                {[...Array(totalPages)].map((_, i) => (
+                  <PaginationItem key={i}>
+                    <PaginationLink
+                      href="#"
+                      isActive={(data?.pageNumber ?? currentPage) === i + 1}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        setCurrentPage(i + 1);
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                      }}
+                    >
+                      {i + 1}
+                    </PaginationLink>
+                  </PaginationItem>
+                ))}
+
+                <PaginationItem>
+                  <PaginationNext
+                    href="#"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setCurrentPage((p) => Math.min(totalPages, p + 1));
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }}
+                  />
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
           )}
         </div>
       </div>
