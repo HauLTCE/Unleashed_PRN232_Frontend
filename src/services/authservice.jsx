@@ -1,10 +1,6 @@
 import { apiClient } from "./ApiClient";
 
 
-/**
- * Service object for handling all Authentication-related API requests.
- */
-// FIX: Changed to a named export by adding 'export' here.
 export const authService = {
     /**
      * Sends a registration request to the API.

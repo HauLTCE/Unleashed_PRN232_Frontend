@@ -96,8 +96,6 @@ export function CustomerDetailPage() {
                         <Card>
                             <CardHeader><CardTitle>Actions</CardTitle></CardHeader>
                             <CardContent className="space-y-2">
-                                <Button className="w-full" onClick={() => alert('Navigate to edit page...')}>Edit Profile</Button>
-                                <Button variant="outline" className="w-full" onClick={() => alert('Sending password reset email...')}>Send Password Reset</Button>
                                 <Button variant="destructive" className="w-full" onClick={() => alert('Deleting customer...')}>Delete Customer</Button>
                             </CardContent>
                         </Card>
