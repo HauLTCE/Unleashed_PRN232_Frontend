@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import * as userService from '../../services/userService';
+import userService from '../../services/userService';
 
 export const useUser = (userId) => {
     const [user, setUser] = useState(null);
@@ -44,7 +44,21 @@ export const useUser = (userId) => {
         }
     };
 
+    const changeStatus = async (userId) => {
+        setLoading(true);
+        setError(null);
+        try {
+            await authService.changeStatus(userId);
+            return true;
+        } catch (err) {
+            const errorMessage = err.response?.data?.message || err.message || "change status fail failed.";
+            setError(errorMessage);
+            console.error(errorMessage);
+            return false;
+        } finally {
+            setLoading(false);
+        }
+    };
 
-
-    return { user, loading, editUser, error };
+    return { user, loading, editUser, error, changeStatus };
 };
