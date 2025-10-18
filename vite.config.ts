@@ -101,7 +101,12 @@ export default defineConfig({
         secure: false,
         changeOrigin: true,
       },
-
+      '/api/Filters': {
+        target: 'https://localhost:60448',
+        //target: 'https://localhost:55962',
+        secure: false,
+        changeOrigin: true,
+      },
     },
   },
 });
