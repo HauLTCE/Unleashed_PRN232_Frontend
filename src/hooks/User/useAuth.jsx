@@ -81,20 +81,20 @@ export const AuthProvider = ({ children }) => {
             setIsLoading(false);
         }
     };
-
+    const value = {
+        userId,
+        token,
+        isAuthenticated,
+        isLoading,
+        error,
+        login,
+        register,
+        logout,
+    };
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
-const value = {
-    userId,
-    token,
-    isAuthenticated,
-    isLoading,
-    error,
-    login,
-    register,
-    logout,
-};
+
 
 // Custom hook to easily access the auth context
 export const useAuth = () => {
