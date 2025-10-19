@@ -1,6 +1,6 @@
 import { apiClient } from "./ApiClient";
 
-export const userService = {
+const userService = {
     /**
      * Fetches all Userss.
      * Corresponds to: GET /api/Users
@@ -107,3 +107,4 @@ export const userService = {
         return apiClient.put(`/Users/change-status?id=${userId}`);
     }
 }
+export default userService;
