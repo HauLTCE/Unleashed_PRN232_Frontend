@@ -81,6 +81,54 @@ export const AuthProvider = ({ children }) => {
             setIsLoading(false);
         }
     };
+
+    const sendResetPassword = async (email) => {
+        try {
+
+            const response = await authService.sendResetPassword(email);
+            return response.data;
+        } catch (err) {
+            const errorMessage = err.response?.data?.message || err.message || "Failed to send reset link.";
+            console.error("sendResetPassword error:", errorMessage);
+            throw new Error(errorMessage); // Re-throw for the component to catch
+        }
+    };
+
+
+    const checkResetPassword = async (userId, token) => {
+        try {
+            const response = await authService.checkResetPassword(userId, token);
+            return response.data;
+        } catch (err) {
+            const errorMessage = err.response?.data?.message || err.message || "Invalid or expired token.";
+            console.error("checkResetPassword error:", errorMessage);
+            throw new Error(errorMessage);
+        }
+    };
+
+
+    const resetPassword = async (resetPasswordDto, token) => {
+        try {
+            const response = await authService.resetPassword(resetPasswordDto, token);
+            return response.data;
+        } catch (err) {
+            const errorMessage = err.response?.data?.message || err.message || "Failed to reset password.";
+            console.error("resetPassword error:", errorMessage);
+            throw new Error(errorMessage);
+        }
+    };
+
+    const confirmEmail = async (token) => {
+        try {
+            const response = await authService.confirmEmail(token);
+            return response.data;
+        } catch (err) {
+            const errorMessage = err.response?.data?.message || err.message || "Failed to confirm email.";
+            console.error("Confirm email error:", errorMessage);
+            throw new Error(errorMessage);
+        }
+    }
+
     const value = {
         userId,
         token,
@@ -90,13 +138,16 @@ export const AuthProvider = ({ children }) => {
         login,
         register,
         logout,
+        sendResetPassword,
+        checkResetPassword,
+        resetPassword,
+        confirmEmail
     };
+
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
 
-
-// Custom hook to easily access the auth context
 export const useAuth = () => {
     const context = useContext(AuthContext);
     if (!context) {
@@ -104,4 +155,3 @@ export const useAuth = () => {
     }
     return context;
 };
-
