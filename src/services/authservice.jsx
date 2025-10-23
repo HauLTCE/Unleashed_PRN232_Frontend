@@ -30,6 +30,40 @@ export const authService = {
     checkAuth: () => {
         return apiClient.get('/Authen/check-auth');
     },
+
+    confirmEmail: (token) => {
+        return apiClient.get('/Authen/check-auth', {
+            params: {
+                token: token
+            }
+        });
+    },
+
+    sendResetPassword: (email) => {
+        return apiClient.post('/Authen/reset-password',
+            null,
+            {
+                params: {
+                    email: email
+                }
+            });
+    },
+
+    checkResetPassword: (userId, token) => {
+        return apiClient.get('/Authen/reset-password', {
+            params: {
+                userId: userId,
+                token: token
+            }
+        })
+    },
+    resetPassword: (resetPaswwordDto, token) => {
+        return apiClient.put('/Authen/reset-password', resetPaswwordDto, {
+            params: {
+                token: token
+            }
+        })
+    }
 };
 
-// The 'export default' line is no longer needed.
+

@@ -23,7 +23,9 @@ import { ContactPage } from './pages/ContactPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 import { ServerErrorPage } from './pages/ServerErrorPage';
 import { ForbiddenPage } from './pages/ForbiddenPage';
-
+import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
+import { ResetPasswordPage } from './pages/ResetPasswordPage';
+import { ConfirmEmailPage } from './pages/ConfirmEmailPage';
 // Import admin pages
 import { DashboardPage } from './admin/pages/DashboardPage';
 import { ProductsPage } from './admin/pages/ProductsPage';
@@ -40,6 +42,7 @@ import { OrderDetailPage } from './admin/pages/OrderDetailPage';
 import { AuthProvider } from './hooks/User/useAuth';
 import { CustomerDetailPage } from './admin/pages/CustomerDetailPage';
 import { CreateEmployeePage } from './admin/pages/CreateEmployeePage';
+
 
 export default function App() {
   return (
@@ -72,6 +75,9 @@ export default function App() {
                     <Route path="/" element={<Homepage />} />
                     <Route path="/login" element={<LoginPage />} />
                     <Route path="/signup" element={<SignupPage />} />
+                    <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+                    <Route path="/confirm-email" element={<ConfirmEmailPage />} />
+                    <Route path="/reset-password" element={<ResetPasswordPage />} />
                     <Route path="/shop" element={<ShopPage />} />
                     <Route path="/product/:id" element={<ProductDetailPage />} />
                     <Route path="/cart" element={<CartPage />} />
