@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -19,17 +19,22 @@ export function LoginPage() {
   });
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { login, isAuthenticated, role } = useAuth();
 
-  // FIX 1: Added 'event' parameter and called event.preventDefault()
-  // This stops the page from reloading when the form is submitted.
+  useEffect(() => {
+    if (isAuthenticated) {
+      if (role === 'ADMIN' || role === 'STAFF') {
+        navigate('/admin');
+      } else {
+        navigate('/');
+      }
+    }
+  }, [isAuthenticated, role, navigate]);
+
   const handleSubmit = async (event) => {
     event.preventDefault();
-    setIsLoading(true);
-
+    // The context's `login` function handles isLoading for you.
     try {
-      // FIX 2: The 'login' function from your hook expects a single object.
-      // Pass the username and password as a single 'loginDto' object.
       const success = await login({
         username: formData.username,
         password: formData.password
@@ -37,16 +42,11 @@ export function LoginPage() {
 
       if (success) {
         toast.success('Welcome back!');
-        navigate('/');
       } else {
-        // The error is now handled by the hook, which sets an 'error' state.
-        // You can display that error state or rely on the hook's console logs.
         toast.error('Invalid credentials. Please try again.');
       }
     } catch (error) {
       toast.error('An error occurred. Please try again.');
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -107,7 +107,7 @@ export function LoginPage() {
                   checked={formData.rememberMe}
                   onCheckedChange={(checked) => setFormData(prev => ({
                     ...prev,
-                    rememberMe: checked as boolean
+                    rememberMe: checked
                   }))}
                 />
                 <Label htmlFor="rememberMe" className="text-sm">
