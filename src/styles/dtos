@@ -128,3 +128,50 @@ export type FilterOptionsDTO = {
   colors: ColorDTO[];
   sizes: SizeDTO[];
 };
+// SaleDTO (Đã bổ sung)
+export type SaleDTO = {
+  saleId: number;
+  saleTypeId?: number | null;
+  saleStatusId?: number | null;
+  saleValue?: number | null;
+  saleStartDate?: string | null;
+  saleEndDate?: string | null;
+};
+
+// ProductListDTO (Đã bổ sung thông tin giảm giá và các thuộc tính khác)
+export type ProductListDTO = {
+  productId: string; // Guid
+  productName?: string | null;
+  productCode?: string | null;
+  productDescription?: string | null;
+
+  // Brand
+  brandId?: number | null;
+  brandName?: string | null;
+
+  // Status
+  productStatusName?: string | null;
+
+  // Categories
+  categoryList: CategoryDTO[]; // Danh sách các category sản phẩm
+
+  // Variation display
+  variationImage?: string | null;
+  variationPrice?: number | null;  // Giá của biến thể hiển thị
+
+  // Pricing
+  productPrice?: number | null;    // Giá gốc (nếu có)
+  sale?: SaleDTO | null;            // Thông tin CTKM (tùy chọn)
+  saleValue?: number | null;       // Giá trị KM (tỷ lệ % hoặc số tiền)
+
+  // Ratings
+  averageRating?: number | null; // Đánh giá trung bình
+  totalRatings?: number | null;  // Tổng số đánh giá
+
+  // Inventory
+  quantity: number; // Số lượng sản phẩm
+};
+export type CategoryDTO = {
+  categoryId: number;
+  categoryName?: string | null;
+};
