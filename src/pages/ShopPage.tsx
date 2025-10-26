@@ -69,20 +69,25 @@ function getCategoryNames(p: ProductDetailDTO): string[] {
 export function ShopPage() {
   const { addToCart, addToWishlist, removeFromWishlist, isInWishlist } = useApp();
 
-  // ── State: search / category(multi) / sort / page
+  // ── State: search / category(multi) / sort
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<number[]>([]); // [] = All
   const [sortBy, setSortBy] = useState('featured');
 
-  // page từ server
-  const [currentPage, setCurrentPage] = useState(1);
+  // Gọi API (đã debounce trong hook)
   const pageSize = 20;
-
-  // gọi API (đã debounce trong hook)
-  const { data, loading, error } = usePagedProducts({
-    pageNumber: currentPage,
+  const {
+    data,
+    loading,
+    error,
+    setPage,
+    nextPage,
+    prevPage,
+    setSearch,
+  } = usePagedProducts({
+    pageNumber: 1,
     pageSize,
-    search: searchQuery,
+    search: '',
   });
 
   // an toàn rỗng
@@ -129,11 +134,11 @@ export function ShopPage() {
       const next = has ? prev.filter(x => x !== id) : [...prev, id];
       return next;
     });
-    setCurrentPage(1);
+    setPage(1);
   };
   const setAllCategories = () => {
     setSelectedCategoryIds([]);
-    setCurrentPage(1);
+    setPage(1);
   };
 
   // Lọc client-side (trên page hiện tại): Category (multi) + Price
@@ -185,7 +190,7 @@ export function ShopPage() {
     setAllCategories(); // về All
     setPriceMax(pageMaxPrice);
     setSortBy('featured');
-    setCurrentPage(1);
+    setPage(1);
   };
 
   return (
@@ -206,8 +211,10 @@ export function ShopPage() {
             placeholder="Search products..."
             value={searchQuery}
             onChange={(e) => {
-              setSearchQuery(e.target.value);
-              setCurrentPage(1);
+              const v = e.target.value;
+              setSearchQuery(v);
+              setSearch(v);      // báo cho hook (có debounce)
+              setPage(1);        // về trang 1 khi search
             }}
             className="pl-10"
           />
@@ -272,7 +279,7 @@ export function ShopPage() {
                           // Nếu đang ở All -> chuyển sang chỉ chọn category này
                           if (isAllCategories) {
                             setSelectedCategoryIds([c.id]);
-                            setCurrentPage(1);
+                            setPage(1);
                           } else {
                             toggleCategory(c.id);
                           }
@@ -303,7 +310,7 @@ export function ShopPage() {
                   value={priceMax}
                   onChange={(e) => {
                     setPriceMax(parseInt(e.target.value, 10));
-                    setCurrentPage(1);
+                    setPage(1);
                   }}
                   className="w-full"
                 />
@@ -329,7 +336,7 @@ export function ShopPage() {
 
           <div className="mb-4 flex items-center justify-between">
             <p className="text-muted-foreground">
-              Showing {showingCount} on this page / Total {totalCount} products (page {data?.pageNumber ?? currentPage}/{totalPages})
+              Showing {showingCount} on this page / Total {totalCount} products (page {data?.pageNumber}/{totalPages})
             </p>
           </div>
 
@@ -432,7 +439,7 @@ export function ShopPage() {
                     href="#"
                     onClick={(e) => {
                       e.preventDefault();
-                      setCurrentPage((p) => Math.max(1, p - 1));
+                      prevPage();
                       window.scrollTo({ top: 0, behavior: 'smooth' });
                     }}
                   />
@@ -442,10 +449,10 @@ export function ShopPage() {
                   <PaginationItem key={i}>
                     <PaginationLink
                       href="#"
-                      isActive={(data?.pageNumber ?? currentPage) === i + 1}
+                      isActive={data?.pageNumber === i + 1}
                       onClick={(e) => {
                         e.preventDefault();
-                        setCurrentPage(i + 1);
+                        setPage(i + 1);
                         window.scrollTo({ top: 0, behavior: 'smooth' });
                       }}
                     >
@@ -459,7 +466,7 @@ export function ShopPage() {
                     href="#"
                     onClick={(e) => {
                       e.preventDefault();
-                      setCurrentPage((p) => Math.min(totalPages, p + 1));
+                      nextPage();
                       window.scrollTo({ top: 0, behavior: 'smooth' });
                     }}
                   />
