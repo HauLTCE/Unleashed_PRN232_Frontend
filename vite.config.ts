@@ -85,7 +85,7 @@ export default defineConfig({
       },
       '/api/Categories': {
         target: 'https://localhost:60448',
-       //target: 'https://localhost:55962',
+        //target: 'https://localhost:55962',
         secure: false,
         changeOrigin: true,
       },
@@ -106,6 +106,12 @@ export default defineConfig({
         //target: 'https://localhost:55962',
         secure: false,
         changeOrigin: true,
+      },
+      '/api/Notifications': {
+        target: 'https://localhost:62558',
+        secure: false, // cuz this is dev
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/notifications/, ''), // Remove /api/auth
       },
     },
   },

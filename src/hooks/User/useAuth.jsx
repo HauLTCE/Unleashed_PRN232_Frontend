@@ -7,17 +7,19 @@ const AuthContext = createContext(null);
 // Create the provider component
 export const AuthProvider = ({ children }) => {
     const [userId, setUserId] = useState(null);
-    const [token, setToken] = useState(() => localStorage.getItem('authToken')); // Use function to read only once
+    const [role, setRole] = useState(null);
+    const [token, setToken] = useState(() => localStorage.getItem('authToken'));
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState(null);
 
-
     const logout = useCallback(() => {
         localStorage.removeItem('authToken');
         localStorage.removeItem('authUser');
+        localStorage.removeItem('authRole');
         setToken(null);
         setUserId(null);
+        setRole(null);
         setIsAuthenticated(false);
     }, []);
 
@@ -25,22 +27,28 @@ export const AuthProvider = ({ children }) => {
         const verifyAuth = async () => {
             if (token) {
                 try {
-                    await authService.checkAuth();
+
+                    const newRole = await authService.checkAuth();
+
                     const storedUserId = localStorage.getItem('authUser');
-                    if (storedUserId) {
+
+                    if (storedUserId && newRole) {
                         setUserId(JSON.parse(storedUserId));
+                        setRole(newRole.data);
                         setIsAuthenticated(true);
+
+                        localStorage.setItem('authRole', newRole.data);
                     } else {
                         logout();
                     }
                 } catch (err) {
                     console.error("Auth check failed, token is invalid or expired.", err);
-                    logout(); // Clear invalid token
+                    logout(); // 
                 } finally {
                     setIsLoading(false);
                 }
             } else {
-                setIsLoading(false);
+                setIsLoading(false); // No token, not loading.
             }
         };
 
@@ -61,7 +69,7 @@ export const AuthProvider = ({ children }) => {
             const errorMessage = err.response?.data?.message || err.message || "Login failed.";
             setError(errorMessage);
             console.error(errorMessage);
-            setIsLoading(false); // Stop loading on failure
+            setIsLoading(false);
             return false;
         }
     };
@@ -84,7 +92,6 @@ export const AuthProvider = ({ children }) => {
 
     const sendResetPassword = async (email) => {
         try {
-
             const response = await authService.sendResetPassword(email);
             return response.data;
         } catch (err) {
@@ -132,6 +139,7 @@ export const AuthProvider = ({ children }) => {
     const value = {
         userId,
         token,
+        role,
         isAuthenticated,
         isLoading,
         error,
@@ -146,7 +154,6 @@ export const AuthProvider = ({ children }) => {
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
-
 
 export const useAuth = () => {
     const context = useContext(AuthContext);
