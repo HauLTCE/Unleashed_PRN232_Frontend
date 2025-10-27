@@ -17,6 +17,8 @@ import { ProductDetailPage as AdminProductDetailPage } from '../admin/pages/Prod
 import { OrderDetailPage } from '../admin/pages/OrderDetailPage';
 import { CustomerDetailPage } from '../admin/pages/CustomerDetailPage';
 import { CreateEmployeePage } from '../admin/pages/CreateEmployeePage';
+import { NotificationDetailPage } from '../admin/pages/NotificationDetailPage';
+import { CreateNotificationPage } from '../admin/pages/CreateNotificationPage';
 
 const AdminLayout = () => {
 
@@ -50,6 +52,8 @@ const AdminRoutes = (
         <Route path="stock" element={<StockPage />} />
         <Route path="discounts" element={<DiscountsPage />} />
         <Route path="notifications" element={<NotificationsPage />} />
+        <Route path="notifications/create" element={<CreateNotificationPage />} />
+        <Route path="notifications/:notificationId" element={<NotificationDetailPage />} />
         <Route path="settings" element={<SettingsPage />} />
     </Route>
 );
