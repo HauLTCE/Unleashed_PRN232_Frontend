@@ -22,7 +22,6 @@ export const useNotifications = () => {
         setLoading(true);
         setError(null);
         try {
-            // Data is the PagedResponse object: { items: [], ... }
             const data = await notificationService.getAllNotifications(page, size, filters);
 
             // Corrected: Set notifications from data.items
@@ -61,21 +60,7 @@ export const useNotifications = () => {
         }
     }, []);
 
-    /**
-     * Updates an existing notification.
-     * Note: This hook does not automatically refetch. The component should call fetchNotifications.
-     * @param {number} id - The ID of the notification to update.
-     * @param {object} updateDto - The DTO with updates.
-     */
-    const updateNotification = useCallback(async (id, updateDto) => {
-        try {
-            await notificationService.updateNotification(id, updateDto);
-        } catch (err) {
-            console.error("Failed to update notification:", err);
-            setError(err);
-            throw err; // Re-throw
-        }
-    }, []);
+
 
     /**
      * Deletes a notification.
@@ -100,7 +85,6 @@ export const useNotifications = () => {
         error,
         fetchNotifications,
         createNotification,
-        updateNotification,
         removeNotification
     };
 };
