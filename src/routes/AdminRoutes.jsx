@@ -30,9 +30,9 @@ const AdminLayout = () => {
 
     const isAuthorized = isAuthenticated && (role === 'ADMIN' || role === 'STAFF');
 
-    if (!isAuthorized) {
-        return <Navigate to="/404" replace />;
-    }
+    // if (!isAuthorized) {
+    //     return <Navigate to="/404" replace />;
+    // }
     return <Outlet />;
 };
 

@@ -57,7 +57,7 @@ export function ProductDetailPage() {
               <p className="text-muted-foreground">Product ID: {product.id}</p>
             </div>
           </div>
-          
+
           <div className="flex gap-2">
             <Button variant="outline">
               <Edit className="h-4 w-4 mr-2" />
@@ -120,7 +120,7 @@ export function ProductDetailPage() {
                   <p className="text-base font-semibold">${(product.price * product.stock).toFixed(2)}</p>
                 </div>
               </div>
-              
+
               {product.description && (
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">Description</label>

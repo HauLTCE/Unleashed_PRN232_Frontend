@@ -1,36 +1,23 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { getProductById } from '@/services/ProductsService';
-import type { ProductDetailDTO, VariationDetailDTO } from '@/services/ProductsService';
 
 // -----------------------------------------------------
 // In-memory cache tối giản (key = productId)
-type CacheEntry = { at: number; data: ProductDetailDTO };
-const _cache = new Map<string, CacheEntry>();
-
-// In-flight requests để tránh gọi trùng & hủy đúng cách
-const _inFlight = new Map<string, AbortController>();
+const _cache = new Map();
+const _inFlight = new Map();
 // -----------------------------------------------------
 
-export type UsePageProductDetailOptions = {
-  /** Tự động fetch khi có productId */
-  immediate?: boolean;
-  /** Bật cache bộ nhớ */
-  useCache?: boolean;
-  /** TTL cache (ms). Mặc định 5 phút */
-  cacheTtlMs?: number;
-};
-
-type PriceRange = { min: number | null; max: number | null };
-
-function computePriceRange(variations?: VariationDetailDTO[] | null): PriceRange {
+function computePriceRange(variations) {
   if (!variations?.length) return { min: null, max: null };
+
   const prices = variations
     .map(v => (typeof v.variationPrice === 'number' ? v.variationPrice : null))
-    .filter((x): x is number => x !== null);
+    .filter(x => x !== null);
 
   if (!prices.length) return { min: null, max: null };
 
-  let min = prices[0], max = prices[0];
+  let min = prices[0],
+    max = prices[0];
   for (let i = 1; i < prices.length; i++) {
     const p = prices[i];
     if (p < min) min = p;
@@ -39,30 +26,26 @@ function computePriceRange(variations?: VariationDetailDTO[] | null): PriceRange
   return { min, max };
 }
 
-function collectImages(dto?: ProductDetailDTO | null): string[] {
+function collectImages(dto) {
   if (!dto?.variations?.length) return [];
   const imgs = dto.variations
     .map(v => v.variationImage)
-    .filter((s): s is string => !!s && typeof s === 'string');
+    .filter(s => !!s && typeof s === 'string');
   return Array.from(new Set(imgs));
 }
 
-export function usePageProductDetail(
-  productId: string | undefined,
-  opts: UsePageProductDetailOptions = {}
-) {
+export function usePageProductDetail(productId, opts = {}) {
   const {
     immediate = true,
     useCache = true,
     cacheTtlMs = 5 * 60_000, // 5 phút
   } = opts;
 
-  const [data, setData] = useState<ProductDetailDTO | undefined>(undefined);
-  const [loading, setLoading] = useState<boolean>(!!immediate && !!productId);
-  const [error, setError] = useState<Error | null>(null);
+  const [data, setData] = useState(undefined);
+  const [loading, setLoading] = useState(!!immediate && !!productId);
+  const [error, setError] = useState(null);
 
-  // giữ productId mới nhất để chống setState sau khi id đổi
-  const latestIdRef = useRef<string | undefined>(productId);
+  const latestIdRef = useRef(productId);
 
   const priceRange = useMemo(() => computePriceRange(data?.variations), [data]);
   const images = useMemo(() => collectImages(data), [data]);
@@ -71,10 +54,9 @@ export function usePageProductDetail(
     [data]
   );
 
-  // hủy request cũ khi productId thay đổi hoặc unmount
+  // cleanup requests khi unmount
   useEffect(() => {
     return () => {
-      // cleanup toàn cục (nếu muốn cẩn thận hơn có thể chỉ hủy theo id hiện tại)
       _inFlight.forEach(ctrl => ctrl.abort());
       _inFlight.clear();
     };
@@ -95,7 +77,7 @@ export function usePageProductDetail(
         setLoading(true);
         setError(null);
 
-        // 1) cache hit (còn hạn)
+        // 1) cache hit
         if (useCache) {
           const hit = _cache.get(productId);
           const now = Date.now();
@@ -106,7 +88,7 @@ export function usePageProductDetail(
           }
         }
 
-        // 2) nếu đang có request cùng id, hủy nó trước
+        // 2) hủy request cũ
         const prev = _inFlight.get(productId);
         if (prev) prev.abort();
 
@@ -114,7 +96,7 @@ export function usePageProductDetail(
         const ctrl = new AbortController();
         _inFlight.set(productId, ctrl);
 
-        const res = await getProductById(productId); // nếu cần: truyền { signal: ctrl.signal } khi service hỗ trợ
+        const res = await getProductById(productId);
         if (ctrl.signal.aborted) return;
 
         // 4) ghi cache
@@ -122,12 +104,12 @@ export function usePageProductDetail(
           _cache.set(productId, { at: Date.now(), data: res });
         }
 
-        // 5) set state (đảm bảo id còn khớp)
+        // 5) set state
         if (!didCancel && latestIdRef.current === productId) {
           setData(res);
           setLoading(false);
         }
-      } catch (e: any) {
+      } catch (e) {
         if (e?.name === 'AbortError') return;
         if (!didCancel) {
           setError(e instanceof Error ? e : new Error(String(e)));
@@ -145,17 +127,16 @@ export function usePageProductDetail(
     };
   }, [productId, immediate, useCache, cacheTtlMs]);
 
-  // API: refetch / invalidate / setLocal
+  // refetch API
   const refetch = async () => {
     if (!productId) return;
-    // bỏ qua cache bằng cách xóa entry trước khi fetch
+
     const old = _cache.get(productId);
     if (old) _cache.delete(productId);
 
     setLoading(true);
     setError(null);
 
-    // hủy request cũ
     const prev = _inFlight.get(productId);
     if (prev) prev.abort();
 
@@ -171,7 +152,7 @@ export function usePageProductDetail(
       if (latestIdRef.current === productId) {
         setData(res);
       }
-    } catch (e: any) {
+    } catch (e) {
       if (e?.name !== 'AbortError') {
         setError(e instanceof Error ? e : new Error(String(e)));
       }
@@ -185,42 +166,28 @@ export function usePageProductDetail(
     if (productId) _cache.delete(productId);
   };
 
-  /**
-   * Cập nhật dữ liệu local để UI phản hồi ngay (optimistic UI).
-   * Có thể truyền object hoặc updater(prev) => next
-   */
-  const setLocal = (
-    updater:
-      | Partial<ProductDetailDTO>
-      | ((prev: ProductDetailDTO | undefined) => ProductDetailDTO | undefined)
-  ) => {
+  const setLocal = updater => {
     setData(prev => {
       const next =
         typeof updater === 'function'
-          ? (updater as any)(prev)
-          : ({ ...(prev ?? {}), ...(updater as object) } as ProductDetailDTO);
+          ? updater(prev)
+          : { ...(prev ?? {}), ...(updater ?? {}) };
 
-      // đồng bộ cache (nếu có id)
-      const id = (next as any)?.productId ?? (prev as any)?.productId;
+      const id = next?.productId ?? prev?.productId;
       if (id && useCache) {
-        _cache.set(id, { at: Date.now(), data: next as ProductDetailDTO });
+        _cache.set(id, { at: Date.now(), data: next });
       }
-      return next as ProductDetailDTO;
+      return next;
     });
   };
 
   return {
-    // state
     data,
     loading,
     error,
-
-    // tiện ích suy diễn
     priceRange,
     images,
     hasVariations,
-
-    // điều khiển
     refetch,
     invalidate,
     setLocal,
