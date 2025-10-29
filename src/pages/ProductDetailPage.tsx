@@ -5,23 +5,34 @@ import { Badge } from '../components/ui/badge';
 import { Card, CardContent } from '../components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { ImageWithFallback } from '../components/figma/ImageWithFallback';
-import { Star, Heart, ShoppingCart, Truck, Shield, RotateCcw, Minus, Plus } from 'lucide-react';
+import { ShoppingCart, Heart, Truck, Shield, RotateCcw, Minus, Plus } from 'lucide-react';
 import { toast } from 'sonner@2.0.3';
-import { usePageProductDetail } from '../hooks/usePageProductDetail';
+import { usePageProductDetail } from '../hooks/usePageProductDetail'; // import hook
 
 export function ProductDetailPage() {
-  const { id } = useParams();
-  const { data: product, priceRange, images } = usePageProductDetail(id);
+  const { id } = useParams();  // Get productId from URL
+  const { data: product, priceRange, images, loading, error } = usePageProductDetail(id);  // Get product data from the hook
 
   const [selectedSize, setSelectedSize] = useState('');
   const [selectedColor, setSelectedColor] = useState('');
   const [selectedImage, setSelectedImage] = useState(0);
   const [quantity, setQuantity] = useState(1);
 
-  if (!product) {
+  if (loading) {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 text-center">
         <h1 className="text-2xl font-bold mb-4">Đang tải sản phẩm...</h1>
+      </div>
+    );
+  }
+
+  if (error || !product) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 text-center">
+        <h1 className="text-2xl font-bold mb-4">Sản phẩm không tồn tại</h1>
+        <Button asChild className="mt-4">
+          <Link to="/admin/products">Quay lại danh sách sản phẩm</Link>
+        </Button>
       </div>
     );
   }
@@ -54,9 +65,9 @@ export function ProductDetailPage() {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Breadcrumb */}
       <div className="flex items-center space-x-2 text-sm text-muted-foreground mb-8">
-        <Link to="/" className="hover:text-primary">Trang chủ</Link>
+        <Link to="/admin" className="hover:text-primary">Trang chủ</Link>
         <span>/</span>
-        <Link to="/shop" className="hover:text-primary">Cửa hàng</Link>
+        <Link to="/admin/products" className="hover:text-primary">Danh sách sản phẩm</Link>
         <span>/</span>
         <span className="text-foreground">{product.productName}</span>
       </div>
@@ -103,7 +114,7 @@ export function ProductDetailPage() {
               Danh mục: {product.categories?.map(c => c.categoryName).join(', ')}
             </p>
             <p className="text-muted-foreground mb-4">
-              Trạng thái: {product.productStatus?.productStatusName}
+              Trạng thái: {product.productStatus?.productStatusName || 'Không rõ'}
             </p>
 
             <div className="flex items-center space-x-4 mb-6">

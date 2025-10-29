@@ -1,23 +1,38 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { AdminLayout } from '../components/AdminLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
 import { ArrowLeft, Edit, Trash2 } from 'lucide-react';
-import { mockProducts } from '../data/mockData';
+import { usePageProductDetail } from '@/hooks/usePageProductDetail';  // Sử dụng hook để lấy dữ liệu sản phẩm
 import { ImageWithFallback } from '../../components/figma/ImageWithFallback';
 
 export function ProductDetailPage() {
-  const { id } = useParams<{ id: string }>();
-  const product = mockProducts.find(p => p.id === id);
+  const { id } = useParams();  // Lấy productId từ URL
+  const { data: product, priceRange, images, loading, error } = usePageProductDetail(id);  // Lấy dữ liệu sản phẩm từ hook
 
-  if (!product) {
+  const [selectedSize, setSelectedSize] = useState('');
+  const [selectedColor, setSelectedColor] = useState('');
+  const [selectedVariation, setSelectedVariation] = useState(null);  // Để lưu lựa chọn biến thể
+  const [selectedImage, setSelectedImage] = useState(null); // Để lưu ảnh biến thể đã chọn
+
+  if (loading) {
+    return (
+      <AdminLayout>
+        <div className="text-center py-12">
+          <h1 className="text-2xl font-bold">Loading Product...</h1>
+        </div>
+      </AdminLayout>
+    );
+  }
+
+  if (error || !product) {
     return (
       <AdminLayout>
         <div className="text-center py-12">
           <h1 className="text-2xl font-bold">Product Not Found</h1>
-          <p className="text-muted-foreground mt-2">The product you're looking for doesn't exist.</p>
+          <p className="text-muted-foreground mt-2">The product you are looking for does not exist.</p>
           <Button asChild className="mt-4">
             <Link to="/admin/products">Back to Products</Link>
           </Button>
@@ -34,10 +49,16 @@ export function ProductDetailPage() {
 
   const getStatusBadge = (status: string) => {
     return (
-      <Badge variant={status === 'active' ? 'default' : 'secondary'}>
+      <Badge variant={status === 'ACTIVE' ? 'default' : 'secondary'}>
         {status.charAt(0).toUpperCase() + status.slice(1)}
       </Badge>
     );
+  };
+
+  // Khi chọn biến thể, cập nhật ảnh sản phẩm và các thuộc tính khác
+  const handleVariationChange = (variation) => {
+    setSelectedVariation(variation);  // Lưu biến thể đã chọn
+    setSelectedImage(variation.variationImage);  // Cập nhật ảnh khi chọn biến thể
   };
 
   return (
@@ -53,8 +74,8 @@ export function ProductDetailPage() {
               </Link>
             </Button>
             <div>
-              <h1 className="text-3xl font-bold">{product.name}</h1>
-              <p className="text-muted-foreground">Product ID: {product.id}</p>
+              <h1 className="text-3xl font-bold">{product.productName}</h1>
+              <p className="text-muted-foreground">Product ID: {product.productId}</p>
             </div>
           </div>
 
@@ -78,8 +99,8 @@ export function ProductDetailPage() {
             </CardHeader>
             <CardContent>
               <ImageWithFallback
-                src={product.image}
-                alt={product.name}
+                src={selectedImage || (product.variations && product.variations.length > 0 ? product.variations[0].variationImage : product.image)} // Lấy ảnh từ variation hoặc ảnh chính
+                alt={product.productName}
                 className="w-full h-64 object-cover rounded-md"
               />
             </CardContent>
@@ -94,15 +115,18 @@ export function ProductDetailPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">Name</label>
-                  <p className="text-base">{product.name}</p>
+                  <p className="text-base">{product.productName}</p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">Category</label>
-                  <p className="text-base">{product.category}</p>
+                  <p className="text-base">{product.categories?.map(c => c.categoryName).join(', ')}</p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">Price</label>
-                  <p className="text-base font-semibold">${product.price.toFixed(2)}</p>
+                  <p className="text-base font-semibold">
+                    {/* Hiển thị giá từ biến thể nếu có */}
+                    {selectedVariation ? `$${selectedVariation.variationPrice.toFixed(2)}` : 'Price not available'}
+                  </p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">Stock</label>
@@ -113,7 +137,7 @@ export function ProductDetailPage() {
                 </div>
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">Status</label>
-                  <div>{getStatusBadge(product.status)}</div>
+                  <div>{getStatusBadge(product.productStatus?.productStatusName)}</div>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">Total Value</label>
@@ -121,10 +145,10 @@ export function ProductDetailPage() {
                 </div>
               </div>
 
-              {product.description && (
+              {product.productDescription && (
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">Description</label>
-                  <p className="text-base mt-1">{product.description}</p>
+                  <p className="text-base mt-1">{product.productDescription}</p>
                 </div>
               )}
 
@@ -144,7 +168,7 @@ export function ProductDetailPage() {
           </Card>
         </div>
 
-        {/* Variations (if any) */}
+        {/* Product Variations */}
         {product.variations && product.variations.length > 0 && (
           <Card>
             <CardHeader>
@@ -153,18 +177,21 @@ export function ProductDetailPage() {
             <CardContent>
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {product.variations.map((variation) => (
-                  <Card key={variation.id}>
+                  <Card key={variation.variationId}>
                     <CardContent className="pt-6">
                       <div className="space-y-2">
                         <ImageWithFallback
-                          src={variation.image}
-                          alt={`${product.name} - ${variation.color} ${variation.size}`}
+                          src={variation.variationImage}
+                          alt={`${product.productName} - ${variation.color} ${variation.size}`}
                           className="w-full h-32 object-cover rounded-md"
                         />
                         <h4 className="font-medium">{variation.color} - {variation.size}</h4>
-                        <p className="text-sm text-muted-foreground">Price: ${variation.price.toFixed(2)}</p>
+                        <p className="text-sm text-muted-foreground">Price: ${variation.variationPrice.toFixed(2)}</p>
                         <p className="text-sm text-muted-foreground">Stock: {variation.stock}</p>
                         {getStockBadge(variation.stock)}
+                        <Button variant="outline" onClick={() => handleVariationChange(variation)}>
+                          Select Variation
+                        </Button>
                       </div>
                     </CardContent>
                   </Card>
