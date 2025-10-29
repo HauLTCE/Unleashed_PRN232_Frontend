@@ -18,14 +18,18 @@ const notificationUserService = {
         }
     },
 
-    getByUserId: async (userId, pageNumber, pageSize, searchQuery) => {
+    /**
+     * GET: /api/NotificationUsers/{userId}
+     * Fetches paged notification-user records for a specific user.
+     */
+    getByUserId: async (userId, pageNumber = 1, pageSize = 10, searchQuery = null) => {
         // Create query parameters
         const params = new URLSearchParams({
-            pageNumber: pageNumber,
-            pageSize: pageSize,
+            pageNumber: pageNumber.toString(),
+            pageSize: pageSize.toString(),
         });
 
-        // Only add searchQuery if it exists
+        // Only add searchQuery if it exists and is not empty
         if (searchQuery) {
             params.append('searchQuery', searchQuery);
         }
@@ -37,6 +41,20 @@ const notificationUserService = {
         } catch (error) {
             console.error('Failed to fetch user notifications:', error);
             throw new Error('Failed to fetch user notifications');
+        }
+    },
+
+    /**
+     * GET: /api/NotificationUsers/{notificationId}/{userId}
+     * Fetches a specific notification-user record by its composite key.
+     */
+    getById: async (notificationId, userId) => {
+        try {
+            const response = await apiClient.get(`${API_BASE_URL}/${notificationId}/${userId}`);
+            return response.data; // Return the single NotificationUserDTO
+        } catch (error) {
+            console.error('Failed to fetch notification user by ID:', error);
+            throw new Error('Failed to fetch notification user by ID');
         }
     },
 
@@ -72,24 +90,8 @@ const notificationUserService = {
     },
 
     /**
-     * DELETE: /api/NotificationUsers/{notificationId}
-     * Deletes a notification-user record.
-     */
-    delete: async (notificationId) => {
-        try {
-            // Use apiClient.delete and construct the URL
-            // DELETE requests often return 204 No Content
-            await apiClient.delete(`${API_BASE_URL}/${notificationId}`);
-            return true;
-        } catch (error) {
-            console.error('Failed to delete notification user:', error);
-            throw new Error('Failed to delete notification user');
-        }
-    },
-
-    /**
      * DELETE: /api/NotificationUsers/{notificationId}/{userId}
-     * Deletes a notification-user record.
+     * Deletes a notification-user record by its composite key.
      */
     delete: async (notificationId, userId) => {
         try {

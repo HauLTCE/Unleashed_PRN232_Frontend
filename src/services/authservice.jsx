@@ -32,7 +32,7 @@ export const authService = {
     },
 
     confirmEmail: (token) => {
-        return apiClient.get('/Authen/check-auth', {
+        return apiClient.get('/Authen/confirm-email', {
             params: {
                 token: token
             }
