@@ -118,6 +118,11 @@ export default defineConfig({
         secure: false, // cuz this is dev
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api\/orders/, ''), // Remove /api/orders
+      },
+      '/api/discounts': {
+        target: 'https://localhost:7271',
+        secure: false, // cuz this is dev
+        changeOrigin: true,
       }
     },
   },

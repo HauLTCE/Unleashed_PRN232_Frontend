@@ -9,7 +9,7 @@ import { CustomersPage } from '../admin/pages/CustomersPage';
 import { SuppliersPage } from '../admin/pages/SuppliersPage';
 import { AnalyticsPage } from '../admin/pages/AnalyticsPage';
 import { StockPage } from '../admin/pages/StockPage';
-import { DiscountsPage } from '../admin/pages/DiscountsPage';
+
 import { NotificationsPage } from '../admin/pages/NotificationsPage';
 import { SettingsPage } from '../admin/pages/SettingsPage';
 import { ProductDetailPage as AdminProductDetailPage } from '../admin/pages/ProductDetailPage';
@@ -19,6 +19,7 @@ import { NotificationDetailPage } from '../admin/pages/NotificationDetailPage';
 import { CreateNotificationPage } from '../admin/pages/CreateNotificationPage';
 import { OrdersPage } from '../admin/pages/OrdersPage';
 import { OrderDetailPage } from '../admin/pages/OrderDetailPage';
+import { DiscountsPage } from '../admin/pages/DiscountsPage';
 
 const AdminLayout = () => {
 
