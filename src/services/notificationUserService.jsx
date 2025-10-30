@@ -1,6 +1,6 @@
 import { apiClient } from "./ApiClient";
 
-const API_BASE_URL = '/api/NotificationUsers';
+const API_BASE_URL = '/NotificationUsers';
 
 const notificationUserService = {
     /**

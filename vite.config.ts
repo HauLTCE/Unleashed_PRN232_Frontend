@@ -59,19 +59,19 @@ export default defineConfig({
     proxy: {
       // Proxy requests starting with /api/auth to the auth service
       '/api/Authen': {
-        target: 'https://localhost:6256', // Your service
+        target: 'https://localhost:7048', // Your service
         secure: false, // cuz this is dev
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api\/authen/, ''), // Remove /api/auth
       },
       '/api/Users': {
-        target: 'https://localhost:6256', // Your service
+        target: 'https://localhost:7048', // Your service
         secure: false,
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api\/users/, ''), // Remove /api/users
       },
       '/api/Roles': {
-        target: 'https://localhost:6256', // Your auth service
+        target: 'https://localhost:7048', // Your auth service
         secure: false,
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api\/roles/, ''), // Remove /api/roles
@@ -111,8 +111,14 @@ export default defineConfig({
         target: 'https://localhost:62558',
         secure: false, // cuz this is dev
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api\/notifications/, ''), // Remove /api/auth
+        rewrite: (path) => path.replace(/^\/api\/notifications/, ''), // Remove /api/orders
       },
+      '/api/Order': {
+        target: 'https://localhost:7043',
+        secure: false, // cuz this is dev
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/orders/, ''), // Remove /api/orders
+      }
     },
   },
 });
