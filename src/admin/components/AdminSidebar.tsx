@@ -12,7 +12,8 @@ import {
   Settings,
   ChevronLeft,
   ChevronRight,
-  Truck
+  Truck,
+  Star
 } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { cn } from '../../components/ui/utils';
@@ -26,6 +27,7 @@ const navigation = [
   { name: 'Dashboard', href: '/admin', icon: Home },
   { name: 'Products', href: '/admin/products', icon: Package },
   { name: 'Orders', href: '/admin/orders', icon: ShoppingCart },
+  { name: 'Reviews', href: '/admin/reviews', icon: Star },
   { name: 'Users', href: '/admin/users', icon: Users },
   { name: 'Suppliers', href: '/admin/suppliers', icon: Truck },
   { name: 'Analytics', href: '/admin/analytics', icon: BarChart3 },

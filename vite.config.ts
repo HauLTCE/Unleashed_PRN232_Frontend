@@ -149,6 +149,16 @@ export default defineConfig({
         secure: false, // cuz this is dev
         changeOrigin: true,
       },
+      '/api/reviews': {
+        target: 'https://localhost:7164',
+        secure: false,
+        changeOrigin: true,
+      },
+      '/api/comments': {
+        target: 'https://localhost:7164',
+        secure: false,
+        changeOrigin: true,
+      },
     },
   },
 });

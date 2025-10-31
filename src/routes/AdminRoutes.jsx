@@ -23,6 +23,7 @@ import { DiscountsPage } from '../admin/pages/DiscountsPage';
 import StockPage from '../admin/pages/StockPage';
 import { CustomersPage } from '../admin/pages/CustomersPage';
 import { SuppliersPage } from '../admin/pages/SuppliersPage';
+import { ReviewsPage } from '../admin/pages/ReviewsPage';
 
 const AdminLayout = () => {
 
@@ -48,6 +49,7 @@ const AdminRoutes = (
         <Route path="products/:id" element={<AdminProductDetailPage />} />
         <Route path="orders" element={<OrdersPage />} />
         <Route path="orders/:id" element={<OrderDetailPage />} />
+        <Route path="reviews" element={<ReviewsPage />} />
         <Route path="users" element={<CustomersPage />} />
         <Route path="users/create" element={<CreateEmployeePage />} />
         <Route path="users/:userId" element={<CustomerDetailPage />} />
