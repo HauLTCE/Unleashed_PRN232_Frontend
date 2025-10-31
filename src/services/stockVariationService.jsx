@@ -38,4 +38,8 @@ export const stockVariationService = {
         const response = await apiClient.delete(`${BASE_API_URL}/${stockId}/${variationId}`);
         return response.data;
     },
+    async getByStockId(stockId) {
+        const response = await apiClient.get(`${BASE_API_URL}/by-stock/${stockId}`);
+        return response.data;
+    },
 };

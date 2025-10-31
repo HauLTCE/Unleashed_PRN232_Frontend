@@ -132,7 +132,7 @@ export function AccountPage() {
           <TabsTrigger value="settings">Settings</TabsTrigger>
           <TabsTrigger value="orders">Orders</TabsTrigger>
           <TabsTrigger value="notifications">Notifications</TabsTrigger>
-          <TabsTrigger value="logout" onClick={handleLogout}>Logout</TabsTrigger>
+          {/* <TabsTrigger value="logout" onClick={handleLogout}>Logout</TabsTrigger> */}
         </TabsList>
 
         <TabsContent value="profile" className="mt-6">

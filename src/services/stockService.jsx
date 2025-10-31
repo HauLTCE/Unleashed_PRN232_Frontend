@@ -1,10 +1,9 @@
-// src/services/StockService.jsx
 import { apiClient } from "./apiClient";
 
 const BASE_API_URL = "/Stocks";
 
 const stockService = {
-    // GET: /api/stocks
+    // GET: /api/Stocks
     getAllStocks: async () => {
         try {
             const response = await apiClient.get(BASE_API_URL);
@@ -15,7 +14,7 @@ const stockService = {
         }
     },
 
-    // GET: /api/stocks/{id}
+    // GET: /api/Stocks/{id}
     getStockById: async (id) => {
         try {
             const response = await apiClient.get(`${BASE_API_URL}/${id}`);
@@ -26,7 +25,7 @@ const stockService = {
         }
     },
 
-    // POST: /api/stocks
+    // POST: /api/Stocks
     createStock: async (stockDto) => {
         try {
             const response = await apiClient.post(BASE_API_URL, stockDto);
@@ -37,38 +36,24 @@ const stockService = {
         }
     },
 
-    // PUT: /api/stocks/{id}
+    // PUT: /api/Stocks/{id}
     updateStock: async (id, updateStockDto) => {
         try {
             const response = await apiClient.put(`${BASE_API_URL}/${id}`, updateStockDto);
-            return response.status === 204;
+            return response.status === 204 || response.status === 200;
         } catch (error) {
             console.error(`Error updating stock with ID ${id}:`, error);
             throw error;
         }
     },
 
-    // DELETE: /api/stocks/{id}
+    // DELETE: /api/Stocks/{id}
     deleteStock: async (id) => {
         try {
             const response = await apiClient.delete(`${BASE_API_URL}/${id}`);
-            return response.status === 204;
+            return response.status === 204 || response.status === 200;
         } catch (error) {
             console.error(`Error deleting stock with ID ${id}:`, error);
-            throw error;
-        }
-    },
-
-    // Optional: GET /api/stocks/by-variation-ids?ids=1,2,3
-    getStocksByVariationIds: async (variationIds) => {
-        try {
-            const params = new URLSearchParams();
-            variationIds.forEach((id) => params.append("ids", id));
-
-            const response = await apiClient.get(`${BASE_API_URL}/by-variation-ids?${params.toString()}`);
-            return response.data;
-        } catch (error) {
-            console.error("Error fetching stocks by variation IDs:", error);
             throw error;
         }
     },

@@ -149,7 +149,7 @@ export default defineConfig({
         secure: false, // cuz this is dev
         changeOrigin: true,
       },
-      '/api/reviews': {
+      '/api/Reviews': {
         target: 'https://localhost:7164',
         secure: false,
         changeOrigin: true,
