@@ -44,6 +44,10 @@ const getStatusBadge = (status) => {
   if (lower === 'inactive') {
     return <Badge className="bg-red-100 text-red-800 border-red-300">Inactive</Badge>;
   }
+  // Thêm case cho "expired"
+  if (lower === 'expired') {
+    return <Badge className="bg-gray-100 text-gray-800 border-gray-300">Expired</Badge>;
+  }
   return <Badge variant="outline">{status}</Badge>;
 };
 
@@ -198,7 +202,18 @@ export function DiscountsPage() {
   const [newDiscount, setNewDiscount] = React.useState(initialFormState);
 
   // Chuyển đổi giá trị filter sang ID mà API yêu cầu
-  const statusIdForApi = statusFilter === 'all' ? undefined : (statusFilter === 'active' ? 2 : 1);
+  const statusIdForApi = (status) => {
+    switch (status) {
+      case 'active':
+        return 2;
+      case 'inactive':
+        return 1;
+      case 'expired':
+        return 3;
+      default:
+        return undefined; // Cho trường hợp 'all'
+    }
+  };
   // Sử dụng hook để fetch dữ liệu
   const { discounts, loading: isLoading, error: fetchError, refetch } = useDiscounts({
     search: searchQuery,
@@ -430,6 +445,7 @@ export function DiscountsPage() {
                   <SelectItem value="all">All Statuses</SelectItem>
                   <SelectItem value="active">Active</SelectItem>
                   <SelectItem value="inactive">Inactive</SelectItem>
+                  <SelectItem value="expired">Expired</SelectItem>
                 </SelectContent>
               </Select>
             </div>
