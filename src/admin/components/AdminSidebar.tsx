@@ -13,7 +13,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Truck,
-  Star
+  Star,
+  FileText
 } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { cn } from '../../components/ui/utils';
@@ -32,6 +33,7 @@ const navigation = [
   { name: 'Suppliers', href: '/admin/suppliers', icon: Truck },
   { name: 'Analytics', href: '/admin/analytics', icon: BarChart3 },
   { name: 'Stock', href: '/admin/stock', icon: Warehouse },
+  { name: 'Transactions', href: '/admin/transactions', icon: FileText },
   { name: 'Discounts', href: '/admin/discounts', icon: Tag },
   { name: 'Notifications', href: '/admin/notifications', icon: Bell },
   { name: 'Settings', href: '/admin/settings', icon: Settings },

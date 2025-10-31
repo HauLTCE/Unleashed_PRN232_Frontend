@@ -24,6 +24,9 @@ import StockPage from '../admin/pages/StockPage';
 import { CustomersPage } from '../admin/pages/CustomersPage';
 import { SuppliersPage } from '../admin/pages/SuppliersPage';
 import { ReviewsPage } from '../admin/pages/ReviewsPage';
+import StockDetailPage from '../admin/pages/StockDetailPage';
+import StockImportPage from '../admin/pages/StockImportPage';
+import TransactionsPage from '../admin/pages/TransactionsPage';
 
 const AdminLayout = () => {
 
@@ -56,6 +59,9 @@ const AdminRoutes = (
         <Route path="suppliers" element={<SuppliersPage />} />
         <Route path="analytics" element={<AnalyticsPage />} />
         <Route path="stock" element={<StockPage />} />
+        <Route path="stock/:stockId" element={<StockDetailPage />} />
+        <Route path="stock/:stockId/import" element={<StockImportPage />} />
+        <Route path="transactions" element={<TransactionsPage />} />
         <Route path="discounts" element={<DiscountsPage />} />
         <Route path="notifications" element={<NotificationsPage />} />
         <Route path="notifications/create" element={<CreateNotificationPage />} />

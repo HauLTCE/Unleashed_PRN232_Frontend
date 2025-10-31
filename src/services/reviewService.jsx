@@ -6,7 +6,7 @@ import { apiClient} from './apiClient';
 export const getDashboardReviews = (page = 1, size = 10, filters = {}) => {
   // API is 0-indexed, UI is 1-indexed
   const params = { page: page - 1, size, ...filters };
-  return apiClient.get('/api/Reviews/dashboard', { params });
+  return apiClient.get('/Reviews/dashboard', { params });
 };
 
 /**
@@ -14,7 +14,7 @@ export const getDashboardReviews = (page = 1, size = 10, filters = {}) => {
  */
 export const getProductReviews = (productId, page = 1, size = 10) => {
   const params = { page: page - 1, size };
-  return apiClient.get(`/api/Reviews/product/${productId}`, { params });
+  return apiClient.get(`/Reviews/product/${productId}`, { params });
 };
 
 /**
@@ -22,14 +22,14 @@ export const getProductReviews = (productId, page = 1, size = 10) => {
  */
 export const getUserReviewHistory = (userId, page = 1, size = 10) => {
   const params = { page: page - 1, size };
-  return apiClient.get(`/api/Reviews/user/${userId}`, { params });
+  return apiClient.get(`/Reviews/user/${userId}`, { params });
 };
 
 /**
  * Submits a new review.
  */
 export const addReview = (reviewData) => {
-  return apiClient.post('/api/Reviews', reviewData);
+  return apiClient.post('/Reviews', reviewData);
 };
 
 /**
@@ -37,5 +37,5 @@ export const addReview = (reviewData) => {
  * Note: The backend endpoint was defined for eligibility based on product, let's adapt to that.
  */
 export const checkReviewEligibility = (productId) => {
-  return apiClient.get('/api/Reviews/eligibility', { params: { productId } });
+  return apiClient.get('/Reviews/eligibility', { params: { productId } });
 };
