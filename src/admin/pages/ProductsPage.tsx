@@ -41,14 +41,19 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from '../../components/ui/pagination';
-import { Plus, Search, Edit, Trash2, Eye } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, Eye, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { ImageWithFallback } from '../../components/figma/ImageWithFallback';
 
 import { usePagedProducts } from '@/hooks/usePagedProducts';
+import { useBrands } from '@/hooks/useBrands';
+import { useCategories } from '@/hooks/useCategories';
+import { useVariationOptions } from '@/hooks/useVariationOptions';
+
 import { createProduct, deleteProduct } from '@/services/ProductsService';
 
 export function ProductsPage() {
+  // 1. Danh sách sản phẩm phân trang
   const {
     items: products,
     totalPages,
@@ -63,48 +68,152 @@ export function ProductsPage() {
     onlyActiveProducts: false,
   });
 
-  const [searchQuery, setSearchQuery] = React.useState('');
-  const [categoryFilter, setCategoryFilter] = React.useState('all');
-  const [statusFilter, setStatusFilter] = React.useState('all');
-  const [isAddDialogOpen, setIsAddDialogOpen] = React.useState(false);
-  const [newProduct, setNewProduct] = React.useState({
-    name: '',
-    category: '',
-    stock: 0,
-    status: 'active',
-    description: '',
-  });
+  // 2. Master data (dropdown)
+  const { brands } = useBrands();
+  const { categories } = useCategories();
+  const { sizes, colors, productStatuses } = useVariationOptions();
 
-  // Cập nhật search vào hook có debounce
+  // 3. Local state cho filter list
+  const [searchQuery, setSearchQuery] = React.useState('');
+  const [categoryFilter, setCategoryFilter] = React.useState('all'); // categoryId filter
+  const [statusFilter, setStatusFilter] = React.useState('all');     // productStatusId filter
+
+  // 4. Popup state
+  const [isAddDialogOpen, setIsAddDialogOpen] = React.useState(false);
+
+  // 5. Form tạo sản phẩm mới (thông tin chung)
+  const emptyProductForm = React.useMemo(
+    () => ({
+      productName: '',
+      productCode: '',
+      productDescription: '',
+      brandId: '',
+      categoryId: '',
+      productStatusId: '',
+    }),
+    []
+  );
+
+  const [newProduct, setNewProduct] = React.useState(emptyProductForm);
+
+  // 6. Variation list (nhiều biến thể / màu / size / giá)
+  const emptyVariation = React.useMemo(
+    () => ({
+      sizeId: '',
+      colorId: '',
+      variationPrice: '',
+      variationImage: '', // local preview URL tạm
+    }),
+    []
+  );
+
+  const [variations, setVariations] = React.useState([{ ...emptyVariation }]);
+
+  // 7. Đồng bộ search -> hook usePagedProducts (debounced bên trong)
   React.useEffect(() => {
     setSearch(searchQuery);
   }, [searchQuery, setSearch]);
 
-  // Cập nhật filters
+  // 8. Đồng bộ filter -> hook usePagedProducts
   React.useEffect(() => {
     const filters = {};
-    if (categoryFilter !== 'all') filters.categoryIds = [categoryFilter];
-    if (statusFilter !== 'all') filters.productStatusIds = [statusFilter];
+    if (categoryFilter !== 'all') {
+      filters.categoryIds = [Number(categoryFilter)];
+    }
+    if (statusFilter !== 'all') {
+      filters.productStatusIds = [Number(statusFilter)];
+    }
     setFilters(filters);
   }, [categoryFilter, statusFilter, setFilters]);
 
+  // --- Helpers hiển thị badge tồn kho ---
+  const getStockBadge = (stock) => {
+    const qty = Number(stock ?? 0);
+    if (qty === 0) return <Badge variant="destructive">Out of Stock</Badge>;
+    if (qty < 10) return <Badge variant="secondary">Low Stock</Badge>;
+    return <Badge variant="default">In Stock</Badge>;
+  };
+
+  // --- Helpers hiển thị badge trạng thái ---
+  const getStatusBadge = (statusObj) => {
+    const statusName =
+      statusObj?.productStatusName ||
+      statusObj?.name ||
+      (typeof statusObj === 'string' ? statusObj : 'Unknown');
+
+    const active =
+      statusName?.toLowerCase() === 'available' ||
+      statusName?.toLowerCase() === 'active';
+
+    return (
+      <Badge variant={active ? 'default' : 'secondary'}>
+        {statusName || 'Unknown'}
+      </Badge>
+    );
+  };
+
+  // ====== HANDLERS CHO VARIATIONS ======
+
+  // Cập nhật 1 field trong variation i
+  const updateVariationField = (i, field, value) => {
+    setVariations((prev) => {
+      const clone = [...prev];
+      clone[i] = { ...clone[i], [field]: value };
+      return clone;
+    });
+  };
+
+  // Thêm biến thể mới
+  const addVariation = () => {
+    setVariations((prev) => [...prev, { ...emptyVariation }]);
+  };
+
+  // Xoá biến thể i (giữ lại ít nhất 1)
+  const removeVariation = (i) => {
+    setVariations((prev) => {
+      if (prev.length === 1) {
+        return prev; // không cho xoá hết sạch
+      }
+      const clone = [...prev];
+      clone.splice(i, 1);
+      return clone;
+    });
+  };
+
+  // Chọn ảnh cho variation -> thay vì upload, nhập vào URL string
+  const handleVariationImageChange = (i, value) => {
+    if (!value) return;
+    updateVariationField(i, 'variationImage', value);  // Thay vì tạo URL từ file, sử dụng giá trị string
+  };
+
+  // Submit tạo product
   const handleAddProduct = async () => {
     try {
-      await createProduct({
-        productName: newProduct.name,
-        categoryName: newProduct.category,
-        stock: newProduct.stock,
-        description: newProduct.description,
-        productStatusId: newProduct.status === 'active' ? 1 : 2,
-      });
+      const payload = {
+        productName: newProduct.productName,
+        productCode: newProduct.productCode,
+        productDescription: newProduct.productDescription,
+        brandId: Number(newProduct.brandId) || 0,
+        productStatusId: Number(newProduct.productStatusId) || 0,
+        categoryIds: newProduct.categoryId
+          ? [Number(newProduct.categoryId)]
+          : [],
+        variations: variations.map((v) => ({
+          sizeId: Number(v.sizeId) || 0,
+          colorId: Number(v.colorId) || 0,
+          variationImage: v.variationImage || '',
+          variationPrice: Number(v.variationPrice) || 0,
+        })),
+      };
+
+      await createProduct(payload);
+
+      // Reset form sau khi tạo thành công
+      setNewProduct(emptyProductForm);
+      setVariations([{ ...emptyVariation }]);
       setIsAddDialogOpen(false);
-      setNewProduct({
-        name: '',
-        category: '',
-        stock: 0,
-        status: 'active',
-        description: '',
-      });
+
+      // Reload list
       refetch();
     } catch (err) {
       console.error('Failed to add product:', err);
@@ -112,6 +221,7 @@ export function ProductsPage() {
     }
   };
 
+  // Xoá product
   const handleDeleteProduct = async (id) => {
     if (!window.confirm('Are you sure you want to delete this product?')) return;
     try {
@@ -123,35 +233,61 @@ export function ProductsPage() {
     }
   };
 
-  const getStockBadge = (stock) => {
-    if (stock === 0) return <Badge variant="destructive">Out of Stock</Badge>;
-    if (stock < 10) return <Badge variant="secondary">Low Stock</Badge>;
-    return <Badge variant="default">In Stock</Badge>;
-  };
+  // Render dropdown options
+  const renderBrandOptions = () =>
+    (brands || []).map((b) => (
+      <SelectItem
+        key={b.brandId || b.id}
+        value={String(b.brandId || b.id)}
+      >
+        {b.brandName || b.name || `Brand #${b.brandId || b.id}`}
+      </SelectItem>
+    ));
 
-  const getStatusBadge = (statusName) => {
-    const active =
-      statusName?.toLowerCase() === 'available' ||
-      statusName?.toLowerCase() === 'active';
-    return (
-      <Badge variant={active ? 'default' : 'secondary'}>
-        {statusName || 'Unknown'}
-      </Badge>
-    );
-  };
+  const renderCategoryOptions = () =>
+    (categories || []).map((cat) => (
+      <SelectItem
+        key={cat.categoryId || cat.id}
+        value={String(cat.categoryId || cat.id)}
+      >
+        {cat.categoryName || cat.name || `Category #${cat.categoryId || cat.id}`}
+      </SelectItem>
+    ));
 
-  const categories = React.useMemo(() => {
-    const unique = new Set();
-    products.forEach((p) => {
-      p.categories?.forEach((c) => unique.add(c.categoryName));
-    });
-    return Array.from(unique);
-  }, [products]);
+  const renderStatusOptions = () =>
+    (productStatuses || []).map((ps) => (
+      <SelectItem
+        key={ps.productStatusId || ps.id}
+        value={String(ps.productStatusId || ps.id)}
+      >
+        {ps.productStatusName || ps.name || `Status #${ps.productStatusId || ps.id}`}
+      </SelectItem>
+    ));
+
+  const renderSizeOptions = () =>
+    (sizes || []).map((s) => (
+      <SelectItem
+        key={s.sizeId || s.id}
+        value={String(s.sizeId || s.id)}
+      >
+        {s.sizeName || s.name || `Size #${s.sizeId || s.id}`}
+      </SelectItem>
+    ));
+
+  const renderColorOptions = () =>
+    (colors || []).map((c) => (
+      <SelectItem
+        key={c.colorId || c.id}
+        value={String(c.colorId || c.id)}
+      >
+        {c.colorName || c.name || `Color #${c.colorId || c.id}`}
+      </SelectItem>
+    ));
 
   return (
     <AdminLayout>
       <div className="space-y-6">
-        {/* Header */}
+        {/* HEADER TOP OF PAGE */}
         <div className="flex justify-between items-start">
           <div>
             <h1 className="text-3xl font-bold">Products Management</h1>
@@ -160,7 +296,7 @@ export function ProductsPage() {
             </p>
           </div>
 
-          {/* Add Dialog */}
+          {/* ADD PRODUCT DIALOG */}
           <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
             <DialogTrigger asChild>
               <Button>
@@ -168,75 +304,246 @@ export function ProductsPage() {
                 Add New Product
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-md">
-              <DialogHeader>
+
+            <DialogContent className="max-w-xl w-full h-[80vh] p-0 flex flex-col overflow-hidden">
+              {/* Header cố định */}
+              <DialogHeader className="px-6 py-4 border-b shrink-0">
                 <DialogTitle>Add New Product</DialogTitle>
               </DialogHeader>
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="name">Product Name</Label>
-                  <Input
-                    id="name"
-                    value={newProduct.name}
-                    onChange={(e) =>
-                      setNewProduct({ ...newProduct, name: e.target.value })
-                    }
-                  />
+
+              {/* Body có scrollbar luôn */}
+              <div className="flex-1 overflow-y-scroll px-6 py-4 space-y-6">
+                {/* ============== THÔNG TIN SẢN PHẨM ============== */}
+                <div className="space-y-4">
+                  {/* Product Name */}
+                  <div>
+                    <Label htmlFor="productName">Product Name</Label>
+                    <Input
+                      id="productName"
+                      value={newProduct.productName}
+                      onChange={(e) =>
+                        setNewProduct({
+                          ...newProduct,
+                          productName: e.target.value,
+                        })
+                      }
+                    />
+                  </div>
+
+                  {/* Product Code */}
+                  <div>
+                    <Label htmlFor="productCode">Product Code</Label>
+                    <Input
+                      id="productCode"
+                      value={newProduct.productCode}
+                      onChange={(e) =>
+                        setNewProduct({
+                          ...newProduct,
+                          productCode: e.target.value,
+                        })
+                      }
+                    />
+                  </div>
+
+                  {/* Brand */}
+                  <div>
+                    <Label htmlFor="brandId">Brand</Label>
+                    <Select
+                      value={newProduct.brandId}
+                      onValueChange={(v) =>
+                        setNewProduct({
+                          ...newProduct,
+                          brandId: v,
+                        })
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select brand" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {renderBrandOptions()}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Category */}
+                  <div>
+                    <Label htmlFor="categoryId">Category</Label>
+                    <Select
+                      value={newProduct.categoryId}
+                      onValueChange={(v) =>
+                        setNewProduct({
+                          ...newProduct,
+                          categoryId: v,
+                        })
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select category" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {renderCategoryOptions()}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Status */}
+                  <div>
+                    <Label htmlFor="productStatusId">Status</Label>
+                    <Select
+                      value={newProduct.productStatusId}
+                      onValueChange={(v) =>
+                        setNewProduct({
+                          ...newProduct,
+                          productStatusId: v,
+                        })
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {renderStatusOptions()}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Description */}
+                  <div>
+                    <Label htmlFor="productDescription">Description</Label>
+                    <Textarea
+                      id="productDescription"
+                      value={newProduct.productDescription}
+                      onChange={(e) =>
+                        setNewProduct({
+                          ...newProduct,
+                          productDescription: e.target.value,
+                        })
+                      }
+                    />
+                  </div>
                 </div>
-                <div>
-                  <Label htmlFor="category">Category</Label>
-                  <Input
-                    id="category"
-                    value={newProduct.category}
-                    onChange={(e) =>
-                      setNewProduct({ ...newProduct, category: e.target.value })
-                    }
-                  />
+
+                {/* ============== DANH SÁCH VARIATIONS ============== */}
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="font-semibold text-sm text-muted-foreground">
+                      Variations
+                    </div>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={addVariation}
+                    >
+                      <Plus className="h-4 w-4 mr-1" />
+                      Add Variation
+                    </Button>
+                  </div>
+
+                  <div className="border rounded-lg p-4 space-y-4 max-h-[260px] overflow-y-auto">
+                    {variations.map((v, i) => (
+                      <div
+                        key={i}
+                        className="border rounded-md p-4 relative bg-muted/10"
+                      >
+                        <button
+                          type="button"
+                          className="absolute top-2 right-2 text-muted-foreground hover:text-destructive"
+                          onClick={() => removeVariation(i)}
+                          title="Remove this variation"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {/* Size */}
+                          <div>
+                            <Label>Size</Label>
+                            <Select
+                              value={v.sizeId}
+                              onValueChange={(val) =>
+                                updateVariationField(i, 'sizeId', val)
+                              }
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select size" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {renderSizeOptions()}
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          {/* Color */}
+                          <div>
+                            <Label>Color</Label>
+                            <Select
+                              value={v.colorId}
+                              onValueChange={(val) =>
+                                updateVariationField(i, 'colorId', val)
+                              }
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select color" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {renderColorOptions()}
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          {/* Price */}
+                          <div>
+                            <Label>Price</Label>
+                            <Input
+                              type="number"
+                              value={v.variationPrice}
+                              onChange={(e) =>
+                                updateVariationField(
+                                  i,
+                                  'variationPrice',
+                                  e.target.value
+                                )
+                              }
+                            />
+                          </div>
+
+                          {/* Image input & preview */}
+                          <div className="flex flex-col gap-2">
+                            <Label>Image</Label>
+
+                            {v.variationImage ? (
+                              <img
+                                src={v.variationImage}
+                                alt="preview"
+                                className="h-16 w-16 rounded-md object-cover border"
+                              />
+                            ) : (
+                              <div className="h-16 w-16 rounded-md border bg-muted flex items-center justify-center text-xs text-muted-foreground">
+                                No image
+                              </div>
+                            )}
+
+                            <Input
+                              type="text"
+                              placeholder="Enter image URL"
+                              value={v.variationImage || ''}
+                              onChange={(e) => {
+                                const value = e.target.value;
+                                handleVariationImageChange(i, value);  // Cập nhật bằng giá trị string nhập vào
+                              }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-                <div>
-                  <Label htmlFor="stock">Stock</Label>
-                  <Input
-                    id="stock"
-                    type="number"
-                    value={newProduct.stock}
-                    onChange={(e) =>
-                      setNewProduct({
-                        ...newProduct,
-                        stock: parseInt(e.target.value),
-                      })
-                    }
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="description">Description</Label>
-                  <Textarea
-                    id="description"
-                    value={newProduct.description}
-                    onChange={(e) =>
-                      setNewProduct({
-                        ...newProduct,
-                        description: e.target.value,
-                      })
-                    }
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="status">Status</Label>
-                  <Select
-                    value={newProduct.status}
-                    onValueChange={(v) =>
-                      setNewProduct({ ...newProduct, status: v })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="active">Active</SelectItem>
-                      <SelectItem value="inactive">Inactive</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+              </div>
+
+              {/* Footer cố định */}
+              <div className="px-6 py-4 border-t shrink-0">
                 <Button onClick={handleAddProduct} className="w-full">
                   Add Product
                 </Button>
@@ -245,10 +552,11 @@ export function ProductsPage() {
           </Dialog>
         </div>
 
-        {/* Filters */}
+        {/* FILTER BAR */}
         <Card>
           <CardContent className="pt-6">
             <div className="flex gap-4 flex-wrap">
+              {/* Search box */}
               <div className="flex-1 min-w-[200px] relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
                 <Input
@@ -258,34 +566,53 @@ export function ProductsPage() {
                   className="pl-10"
                 />
               </div>
-              <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                <SelectTrigger className="w-[150px]">
+
+              {/* Filter Category */}
+              <Select
+                value={categoryFilter}
+                onValueChange={setCategoryFilter}
+              >
+                <SelectTrigger className="w-[180px]">
                   <SelectValue placeholder="Category" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Categories</SelectItem>
-                  {categories.map((c) => (
-                    <SelectItem key={c} value={c}>
-                      {c}
+                  {categories?.map((cat) => (
+                    <SelectItem
+                      key={cat.categoryId || cat.id}
+                      value={String(cat.categoryId || cat.id)}
+                    >
+                      {cat.categoryName || cat.name || `Category #${cat.categoryId || cat.id}`}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-[120px]">
+
+              {/* Filter Status */}
+              <Select
+                value={statusFilter}
+                onValueChange={setStatusFilter}
+              >
+                <SelectTrigger className="w-[160px]">
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All</SelectItem>
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="inactive">Inactive</SelectItem>
+                  <SelectItem value="all">All Statuses</SelectItem>
+                  {productStatuses?.map((ps) => (
+                    <SelectItem
+                      key={ps.productStatusId || ps.id}
+                      value={String(ps.productStatusId || ps.id)}
+                    >
+                      {ps.productStatusName || ps.name || `Status #${ps.productStatusId || ps.id}`}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
           </CardContent>
         </Card>
 
-        {/* Table */}
+        {/* TABLE */}
         <Card>
           <CardHeader>
             <CardTitle>Products ({products.length})</CardTitle>
@@ -308,18 +635,23 @@ export function ProductsPage() {
                 </TableHeader>
                 <TableBody>
                   {products.map((product) => {
-                    const image =
+                    const imgSrc =
                       product.variations?.[0]?.variationImage ||
                       product.categories?.[0]?.categoryImageUrl ||
                       '/placeholder.png';
-                    const category =
+
+                    const categoryName =
                       product.categories?.[0]?.categoryName || 'Uncategorized';
+
+                    const stockQty = product.stockQuantity ?? 0;
+
                     return (
                       <TableRow key={product.productId}>
+                        {/* Product col */}
                         <TableCell>
                           <div className="flex items-center gap-3">
                             <ImageWithFallback
-                              src={image}
+                              src={imgSrc}
                               alt={product.productName}
                               className="h-12 w-12 rounded-md object-cover"
                             />
@@ -333,16 +665,24 @@ export function ProductsPage() {
                             </div>
                           </div>
                         </TableCell>
-                        <TableCell>{category}</TableCell>
+
+                        {/* Category */}
+                        <TableCell>{categoryName}</TableCell>
+
+                        {/* Stock */}
                         <TableCell>
                           <div className="space-y-1">
-                            <div>{product.stockQuantity ?? 0}</div>
-                            {getStockBadge(product.stockQuantity ?? 0)}
+                            <div>{stockQty}</div>
+                            {getStockBadge(stockQty)}
                           </div>
                         </TableCell>
+
+                        {/* Status */}
                         <TableCell>
-                          {getStatusBadge(product.productStatus?.productStatusName)}
+                          {getStatusBadge(product.productStatus)}
                         </TableCell>
+
+                        {/* Actions */}
                         <TableCell>
                           <div className="flex items-center gap-2">
                             <Button variant="ghost" size="sm" asChild>
@@ -356,9 +696,7 @@ export function ProductsPage() {
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() =>
-                                handleDeleteProduct(product.productId)
-                              }
+                              onClick={() => handleDeleteProduct(product.productId)}
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
@@ -386,6 +724,7 @@ export function ProductsPage() {
                         }
                       />
                     </PaginationItem>
+
                     {Array.from({ length: totalPages }, (_, i) => i + 1).map(
                       (page) => (
                         <PaginationItem key={page}>
@@ -399,6 +738,7 @@ export function ProductsPage() {
                         </PaginationItem>
                       )
                     )}
+
                     <PaginationItem>
                       <PaginationNext
                         onClick={() => setPage(pageNumber + 1)}
