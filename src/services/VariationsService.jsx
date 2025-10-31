@@ -1,5 +1,5 @@
 // src/services/VariationsService.jsx
-import { apiClient } from './ApiClient';
+import { apiClient } from './apiClient';
 
 /** GET /api/Variations/{id} */
 export const getVariationById = async (id) => {
