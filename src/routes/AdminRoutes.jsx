@@ -5,10 +5,10 @@ import { useAuth } from '../hooks/User/useAuth';
 // Import all admin pages
 import { DashboardPage } from '../admin/pages/DashboardPage';
 import { ProductsPage } from '../admin/pages/ProductsPage';
-import { CustomersPage } from '../admin/pages/CustomersPage';
-import { SuppliersPage } from '../admin/pages/SuppliersPage';
+
+
 import { AnalyticsPage } from '../admin/pages/AnalyticsPage';
-import { StockPage } from '../admin/pages/StockPage';
+
 
 import { NotificationsPage } from '../admin/pages/NotificationsPage';
 import { SettingsPage } from '../admin/pages/SettingsPage';
@@ -20,6 +20,9 @@ import { CreateNotificationPage } from '../admin/pages/CreateNotificationPage';
 import { OrdersPage } from '../admin/pages/OrdersPage';
 import { OrderDetailPage } from '../admin/pages/OrderDetailPage';
 import { DiscountsPage } from '../admin/pages/DiscountsPage';
+import StockPage from '../admin/pages/StockPage';
+import { CustomersPage } from '../admin/pages/CustomersPage';
+import { SuppliersPage } from '../admin/pages/SuppliersPage';
 
 const AdminLayout = () => {
 

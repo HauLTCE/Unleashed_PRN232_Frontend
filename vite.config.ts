@@ -78,37 +78,37 @@ export default defineConfig({
       },
       // ===== Product service (https://localhost:60448) =====
       '/api/Products': {
-        target: 'https://localhost:60448',
+        target: 'https://localhost:7276',
         //target: 'https://localhost:55962',
         secure: false,
         changeOrigin: true,
       },
       '/api/Categories': {
-        target: 'https://localhost:60448',
+        target: 'https://localhost:7276',
         //target: 'https://localhost:55962',
         secure: false,
         changeOrigin: true,
       },
       '/api/Brands': {
-        target: 'https://localhost:60448',
+        target: 'https://localhost:7276',
         //target: 'https://localhost:55962',
         secure: false,
         changeOrigin: true,
       },
       '/api/Variations': {
-        target: 'https://localhost:60448',
+        target: 'https://localhost:7276',
         //target: 'https://localhost:55962',
         secure: false,
         changeOrigin: true,
       },
       '/api/Filters': {
-        target: 'https://localhost:60448',
+        target: 'https://localhost:7276',
         //target: 'https://localhost:55962',
         secure: false,
         changeOrigin: true,
       },
       '/api/Notifications': {
-        target: 'https://localhost:62558',
+        target: 'https://localhost:7158',
         secure: false, // cuz this is dev
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api\/notifications/, ''), // Remove /api/orders
@@ -123,7 +123,32 @@ export default defineConfig({
         target: 'https://localhost:7271',
         secure: false, // cuz this is dev
         changeOrigin: true,
-      }
+      },
+      '/api/Providers': {
+        target: 'https://localhost:7212',
+        secure: false, // cuz this is dev
+        changeOrigin: true,
+      },
+      '/api/Stocks': {
+        target: 'https://localhost:7212',
+        secure: false, // cuz this is dev
+        changeOrigin: true,
+      },
+      '/api/StockVariations': {
+        target: 'https://localhost:7212',
+        secure: false, // cuz this is dev
+        changeOrigin: true,
+      },
+      '/api/Transactions': {
+        target: 'https://localhost:7212',
+        secure: false, // cuz this is dev
+        changeOrigin: true,
+      },
+      '/api/TransactionTypes': {
+        target: 'https://localhost:7212',
+        secure: false, // cuz this is dev
+        changeOrigin: true,
+      },
     },
   },
 });
