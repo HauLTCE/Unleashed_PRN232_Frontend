@@ -177,7 +177,7 @@ export function DiscountsPage() {
   const [searchQuery, setSearchQuery] = React.useState('');
   const [statusFilter, setStatusFilter] = React.useState('all');
   const [currentPage, setCurrentPage] = React.useState(1);
-
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = React.useState(searchQuery);
   // State cho Dialog và form tạo mới
   const [isAddDialogOpen, setIsAddDialogOpen] = React.useState(false);
   const [isCreating, setIsCreating] = React.useState(false);
@@ -214,10 +214,20 @@ export function DiscountsPage() {
         return undefined; // Cho trường hợp 'all'
     }
   };
-  // Sử dụng hook để fetch dữ liệu
+
+  React.useEffect(() => {
+    const timerId = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 500); // Đợi 500ms sau khi người dùng ngừng gõ
+
+    return () => {
+      clearTimeout(timerId); // Xóa bộ đếm thời gian cũ nếu người dùng gõ tiếp
+    };
+  }, [searchQuery]);
+
   const { discounts, loading: isLoading, error: fetchError, refetch } = useDiscounts({
-    search: searchQuery,
-    statusId: statusIdForApi,
+    search: debouncedSearchQuery,
+    statusId: statusIdForApi(statusFilter),
   });
 
   // Logic phân trang ở client-side
