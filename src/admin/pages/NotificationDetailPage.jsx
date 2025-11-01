@@ -10,6 +10,7 @@ import { Badge } from '../../components/ui/badge';
 import { Input } from '../../components/ui/input';
 import { Textarea } from '../../components/ui/textarea';
 import { Label } from '../../components/ui/label';
+import { useNotificationUsers } from '../../hooks/NotificationUser/useNotificationUsers';
 
 const formatDate = (dateString) => {
     try {
@@ -37,7 +38,7 @@ export function NotificationDetailPage() {
     const navigate = useNavigate();
     const { notification, loading, error, updateNotification } = useNotification(notificationId);
     const { removeNotification } = useNotifications();
-
+    const { createNotificationUsers } = useNotificationUsers();
     const [isEditing, setIsEditing] = useState(false);
     const [editedTitle, setEditedTitle] = useState('');
     const [editedContent, setEditedContent] = useState('');
@@ -105,6 +106,8 @@ export function NotificationDetailPage() {
                     notificationContent: notification.notificationContent,
                     isNotificationDraft: false
                 });
+
+                createNotificationUsers(notificationId)
             } catch (err) {
                 console.error("Failed to publish notification:", err);
             } finally {

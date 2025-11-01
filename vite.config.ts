@@ -78,55 +78,55 @@ export default defineConfig({
       },
       // ===== Product service (https://localhost:60448) =====
       '/api/Products': {
-        target: 'https://localhost:60448',
+        target: 'https://localhost:7276',
         //target: 'https://localhost:55962',
         secure: false,
         changeOrigin: true,
       },
       '/api/Categories': {
-        target: 'https://localhost:60448',
+        target: 'https://localhost:7276',
         //target: 'https://localhost:55962',
         secure: false,
         changeOrigin: true,
       },
       '/api/Brands': {
-        target: 'https://localhost:60448',
+        target: 'https://localhost:7276',
         //target: 'https://localhost:55962',
         secure: false,
         changeOrigin: true,
       },
       '/api/Variations': {
-        target: 'https://localhost:60448',
+        target: 'https://localhost:7276',
         //target: 'https://localhost:55962',
         secure: false,
         changeOrigin: true,
       },
-       '/api/Sizes': {
-        target: 'https://localhost:60448',
+      '/api/Sizes': {
+        target: 'https://localhost:7276',
         //target: 'https://localhost:55962',
         secure: false,
         changeOrigin: true,
       },
-        '/api/Colors': {
-        target: 'https://localhost:60448',
+      '/api/Colors': {
+        target: 'https://localhost:7276',
         //target: 'https://localhost:55962',
         secure: false,
         changeOrigin: true,
       },
-        '/api/ProductStatus': {
-        target: 'https://localhost:60448',
+      '/api/ProductStatus': {
+        target: 'https://localhost:7276',
         //target: 'https://localhost:55962',
         secure: false,
         changeOrigin: true,
       },
       '/api/Filters': {
-        target: 'https://localhost:60448',
+        target: 'https://localhost:7276',
         //target: 'https://localhost:55962',
         secure: false,
         changeOrigin: true,
       },
-      '/Upload': {
-        target: 'https://localhost:64613',
+      '/api/Upload': {
+        target: 'https://localhost:7096',
         //target: 'https://localhost:55962',
         secure: false,
         changeOrigin: true,
@@ -136,6 +136,11 @@ export default defineConfig({
         secure: false, // cuz this is dev
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api\/notifications/, ''), // Remove /api/orders
+      },
+      '/api/NotificationUsers': {
+        target: 'https://localhost:7158',
+        secure: false, // cuz this is dev
+        changeOrigin: true,
       },
       '/api/Order': {
         target: 'https://localhost:7043',

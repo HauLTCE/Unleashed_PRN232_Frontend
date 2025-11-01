@@ -24,7 +24,7 @@ export function LoginPage() {
   useEffect(() => {
     if (isAuthenticated) {
       if (role === 'ADMIN' || role === 'STAFF') {
-        navigate('/admin');
+        navigate('/admin/products');
       } else {
         navigate('/');
       }
