@@ -1,73 +1,112 @@
-import { useCallback, useEffect } from 'react';
-import notificationUserService from '../../services/notificationUserService'
+import { useEffect, useState, useCallback } from "react";
+import { notificationUserService } from "../../services/notificationUserService";
 
-export const useNotificationUsers = () => {
-    const [notificationUsers, setNotificationUsers] = useState([]);
-    const [loading, setLoading] = useState(true);
+export const useNotificationUsers = (userId, initialPage = 1, initialPageSize = 10) => {
+    const [notifications, setNotifications] = useState([]);
+    const [unviewCount, setUnviewCount] = useState(0);
+    const [pageNumber, setPageNumber] = useState(initialPage);
+    const [pageSize, setPageSize] = useState(initialPageSize);
+    const [searchQuery, setSearchQuery] = useState("");
+    const [totalPages, setTotalPages] = useState(1);
+    const [totalCount, setTotalCount] = useState(0);
+    const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
 
-    /**
-     * Fetches all notification users and updates state.
-     */
-    const fetchNotificationUsers = useCallback(async () => {
+    const fetchNotifications = useCallback(async () => {
+        if (!userId) return;
         setLoading(true);
         setError(null);
+
         try {
-            const data = await notificationUserService.getAll();
-            setNotificationUsers(data);
+            const res = await notificationUserService.getByUserIdPaged(
+                userId,
+                pageNumber,
+                pageSize,
+                searchQuery
+            );
+
+            setNotifications(res.items || []);
+            setUnviewCount(res.unviewCount || 0);
+            setTotalPages(res.totalPages || 1);
+            setTotalCount(res.totalCount || 0);
         } catch (err) {
-            setError(err);
+            console.error(err);
+            setError("Failed to fetch notifications");
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [userId, pageNumber, pageSize, searchQuery]);
 
-
-
-    /**
-     * Adds a new notification user.
-     * @param {object} createDto - The DTO for creating a new record.
-     */
-    const addNotificationUser = useCallback(async (createDto) => {
+    const createNotificationUsers = async (notificationId) => {
+        setLoading(true);
         setError(null);
+
         try {
-            const newRecord = await notificationUserService.create(createDto);
-            setNotificationUsers(prev => [...prev, newRecord]);
-            return newRecord;
+            return await notificationUserService.create(notificationId);
         } catch (err) {
-            setError(err);
+            console.error(err);
+            setError("Failed to create NotificationUser records");
             throw err;
+        } finally {
+            setLoading(false);
         }
-    }, []);
+    };
 
-    /**
-     * Removes a notification user.
-     * @param {number} notificationId
-     * @param {string} userId - (Guid)
-     */
-    const removeNotificationUser = useCallback(async (notificationId, userId) => {
+    const markAsViewed = async (notificationId) => {
+        setLoading(true);
         setError(null);
+
         try {
-            await notificationUserService.delete(notificationId, userId);
-            // Remove the record from the local state
-            setNotificationUsers(prev =>
-                prev.filter(nu =>
-                    !(nu.notificationId === notificationId && nu.userId === userId)
-                )
-            );
+            const data = await notificationUserService.update(notificationId, userId = JSON.parse(localStorage.getItem("authUser")), { IsNotificationViewed: true, IsNotificationDeleted: false });
+            return data;
         } catch (err) {
-            setError(err);
-            throw err; // Re-throw
+            console.error(err);
+            setError("Failed to create NotificationUser records");
+            throw err;
+        } finally {
+            setLoading(false);
         }
-    }, []);
+    };
+
+    const markAsDelete = async (notificationId) => {
+        setLoading(true);
+        setError(null);
+
+        try {
+            const data = await notificationUserService.update(notificationId, userId = JSON.parse(localStorage.getItem("authUser")), { IsNotificationViewed: true, IsNotificationDeleted: true });
+            setNotifications((prev) => prev.filter(n => n.notificationId !== notificationId));
+            return data;
+        } catch (err) {
+            console.error(err);
+            setError("Failed to create NotificationUser records");
+            throw err;
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchNotifications();
+    }, [fetchNotifications]);
 
     return {
-        notificationUsers,
+        notifications,
+        unviewCount,
         loading,
         error,
-        addNotificationUser,
-        fetchNotificationUsers,
-        updateNotificationUser,
-        removeNotificationUser,
+        pageNumber,
+        pageSize,
+        totalPages,
+        totalCount,
+        searchQuery,
+        setSearchQuery,
+        setPageNumber,
+        setPageSize,
+        refetch: fetchNotifications,
+        createNotificationUsers,
+        markAsViewed,
+        markAsDelete,
+        setNotifications,
+        setUnviewCount
     };
 };

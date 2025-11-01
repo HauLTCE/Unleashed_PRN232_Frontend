@@ -9,7 +9,6 @@ import {
   Warehouse,
   Tag,
   Bell,
-  Settings,
   ChevronLeft,
   ChevronRight,
   Truck,
@@ -26,7 +25,6 @@ interface AdminSidebarProps {
 }
 
 const navigation = [
-  { name: 'Dashboard', href: '/admin', icon: Home },
   { name: 'Products', href: '/admin/products', icon: Package },
   { name: 'Orders', href: '/admin/orders', icon: ShoppingCart },
   { name: 'Brands', href: '/admin/brands', icon: Tag },
@@ -34,12 +32,10 @@ const navigation = [
   { name: 'Categories', href: '/admin/categories', icon: Folder },
   { name: 'Users', href: '/admin/users', icon: Users },
   { name: 'Suppliers', href: '/admin/suppliers', icon: Truck },
-  { name: 'Analytics', href: '/admin/analytics', icon: BarChart3 },
   { name: 'Stock', href: '/admin/stock', icon: Warehouse },
   { name: 'Transactions', href: '/admin/transactions', icon: FileText },
   { name: 'Discounts', href: '/admin/discounts', icon: Tag },
   { name: 'Notifications', href: '/admin/notifications', icon: Bell },
-  { name: 'Settings', href: '/admin/settings', icon: Settings },
 ];
 
 export function AdminSidebar({ isCollapsed, onToggle }: AdminSidebarProps) {

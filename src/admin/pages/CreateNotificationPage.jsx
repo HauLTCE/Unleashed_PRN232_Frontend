@@ -7,11 +7,13 @@ import { Textarea } from "../../components/ui/textarea";
 import { useNotifications } from "../../hooks/Notification/useNotifications";
 import { useState } from "react";
 import { AdminLayout } from "../components/AdminLayout";
-import { ArrowLeft, Loader2, Save, Send } from "lucide-react";
+import { AlertCircle, ArrowLeft, Loader2, Save, Send } from "lucide-react";
+import { useNotificationUsers } from "../../hooks/NotificationUser/useNotificationUsers";
 
 export const CreateNotificationPage = () => {
     const navigate = useNavigate();
     const { createNotification, loading, error: apiError } = useNotifications();
+    const { createNotificationUsers } = useNotificationUsers();
     const [title, setTitle] = useState('');
     const [content, setContent] = useState('');
 
@@ -35,27 +37,29 @@ export const CreateNotificationPage = () => {
     };
 
     const handleSubmit = async (isSubmittingAsDraft) => {
-        if (!validateForm()) {
-            return; // Don't submit if validation fails
-        }
+        if (!validateForm()) return;
 
-        // This matches the CreateNotificationDTO
         const notificationDTO = {
             notificationTitle: title,
+            userIdSender: JSON.parse(localStorage.getItem("authUser") || "null"),
             notificationContent: content,
             isNotificationDraft: isSubmittingAsDraft,
-            userIdSender: null // Assuming backend handles this
         };
 
         try {
-            await createNotification(notificationDTO);
-            // If successful, navigate back to the list
-            navigate('/admin/notifications'); // Adjust this path if needed
+            const notification = await createNotification(notificationDTO);
+
+
+            if (!isSubmittingAsDraft && notification?.notificationId) {
+                createNotificationUsers(notification.notificationId);
+            }
+
+            navigate('/admin/notifications');
         } catch (err) {
-            // Error is already set by the hook, just log it
             console.error("Failed to create notification:", err);
         }
     };
+
 
     return (
         <AdminLayout>

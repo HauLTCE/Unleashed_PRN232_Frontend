@@ -15,10 +15,12 @@ import { Bell, Heart, LogOut, ShoppingCart, User } from 'lucide-react';
 import { useApp } from '../contexts/AppContext';
 import { useAuth } from '../hooks/User/useAuth';
 import { useUser } from '../hooks/User/useUser';
+import { useNotificationUsers } from '../hooks/NotificationUser/useNotificationUsers';
 
 export function Header() {
   const { cart, wishlist, notifications } = useApp();
   const { userId, isAuthenticated, logout: authLogout } = useAuth();
+  const { unviewCount } = useNotificationUsers(userId);
   const { user } = useUser(userId);
   const navigate = useNavigate();
 
@@ -39,28 +41,16 @@ export function Header() {
           </Link>
 
           <nav className="hidden md:flex items-center space-x-8">
-            <Link
-              to="/"
-              className="text-foreground hover:text-primary transition-colors"
-            >
+            <Link to="/" className="text-foreground hover:text-primary transition-colors">
               Home
             </Link>
-            <Link
-              to="/shop"
-              className="text-foreground hover:text-primary transition-colors"
-            >
+            <Link to="/shop" className="text-foreground hover:text-primary transition-colors">
               Shop
             </Link>
-            <Link
-              to="/about"
-              className="text-foreground hover:text-primary transition-colors"
-            >
+            <Link to="/about" className="text-foreground hover:text-primary transition-colors">
               About Us
             </Link>
-            <Link
-              to="/contact"
-              className="text-foreground hover:text-primary transition-colors"
-            >
+            <Link to="/contact" className="text-foreground hover:text-primary transition-colors">
               Contact
             </Link>
           </nav>
@@ -73,30 +63,16 @@ export function Header() {
                   className="relative p-2 hover:bg-muted rounded-lg transition-colors"
                 >
                   <Bell className="h-5 w-5" />
-                  {unreadNotifications > 0 && (
+                  {unviewCount > 0 && (
                     <Badge
                       variant="destructive"
                       className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs"
                     >
-                      {unreadNotifications}
+                      {unviewCount}
                     </Badge>
                   )}
                 </Link>
 
-                <Link
-                  to="/wishlist"
-                  className="relative p-2 hover:bg-muted rounded-lg transition-colors"
-                >
-                  <Heart className="h-5 w-5" />
-                  {wishlist.length > 0 && (
-                    <Badge
-                      variant="secondary"
-                      className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs"
-                    >
-                      {wishlist.length}
-                    </Badge>
-                  )}
-                </Link>
 
                 <Link
                   to="/cart"
@@ -115,10 +91,7 @@ export function Header() {
 
                 <div className="flex items-center space-x-3">
                   <Avatar className="h-8 w-8">
-                    <AvatarImage
-                      src={user?.userImage}
-                      alt={user?.userFullname}
-                    />
+                    <AvatarImage src={user?.userImage} alt={user?.userFullname} />
                     <AvatarFallback>
                       {(user?.userFullname?.split(' ') || [])
                         .map(n => n[0])
