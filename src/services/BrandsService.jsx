@@ -1,5 +1,5 @@
 // src/services/BrandsService.jsx
-import { apiClient } from './ApiClient';
+import { apiClient } from './apiClient';
 
 /** GET /api/Brands  (PagedResult<BrandDetailDTO>) */
 export const getBrands = async (params = {}) => {

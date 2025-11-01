@@ -78,55 +78,55 @@ export default defineConfig({
       },
       // ===== Product service (https://localhost:60448) =====
       '/api/Products': {
-        target: 'https://localhost:60448',
+        target: 'https://localhost:7276',
         //target: 'https://localhost:55962',
         secure: false,
         changeOrigin: true,
       },
       '/api/Categories': {
-        target: 'https://localhost:60448',
+        target: 'https://localhost:7276',
         //target: 'https://localhost:55962',
         secure: false,
         changeOrigin: true,
       },
       '/api/Brands': {
-        target: 'https://localhost:60448',
+        target: 'https://localhost:7276',
         //target: 'https://localhost:55962',
         secure: false,
         changeOrigin: true,
       },
       '/api/Variations': {
-        target: 'https://localhost:60448',
+        target: 'https://localhost:7276',
         //target: 'https://localhost:55962',
         secure: false,
         changeOrigin: true,
       },
-       '/api/Sizes': {
-        target: 'https://localhost:60448',
+      '/api/Sizes': {
+        target: 'https://localhost:7276',
         //target: 'https://localhost:55962',
         secure: false,
         changeOrigin: true,
       },
-        '/api/Colors': {
-        target: 'https://localhost:60448',
+      '/api/Colors': {
+        target: 'https://localhost:7276',
         //target: 'https://localhost:55962',
         secure: false,
         changeOrigin: true,
       },
-        '/api/ProductStatus': {
-        target: 'https://localhost:60448',
+      '/api/ProductStatus': {
+        target: 'https://localhost:7276',
         //target: 'https://localhost:55962',
         secure: false,
         changeOrigin: true,
       },
       '/api/Filters': {
-        target: 'https://localhost:60448',
+        target: 'https://localhost:7276',
         //target: 'https://localhost:55962',
         secure: false,
         changeOrigin: true,
       },
       '/Upload': {
-        target: 'https://localhost:64613',
+        target: 'https://localhost:7276',
         //target: 'https://localhost:55962',
         secure: false,
         changeOrigin: true,
