@@ -29,6 +29,8 @@ import StockImportPage from '../admin/pages/StockImportPage';
 import TransactionsPage from '../admin/pages/TransactionsPage';
 import { BrandsPage } from '../admin/pages/BrandsPage';
 import { CategoriesPage } from '../admin/pages/CategoriesPage';
+import { ProductCreatePage } from '../admin/pages/ProductCreatePage';
+import { ProductEditPage  } from '../admin/pages/ProductEditPage';
 
 const AdminLayout = () => {
 
@@ -51,6 +53,8 @@ const AdminRoutes = (
     <Route path="/admin" element={<AdminLayout />}>
         <Route index element={<DashboardPage />} />
         <Route path="products" element={<ProductsPage />} />
+        <Route path="products/create" element={<ProductCreatePage />} />
+        <Route path="products/:id/edit" element={<ProductEditPage />} />
         <Route path="brands" element={<BrandsPage />} />
         <Route path="categories" element={<CategoriesPage />} />
         <Route path="products/:id" element={<AdminProductDetailPage />} />
