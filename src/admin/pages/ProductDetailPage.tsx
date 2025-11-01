@@ -1,21 +1,22 @@
 import React, { useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { AdminLayout } from '../components/AdminLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
 import { ArrowLeft, Edit, Trash2 } from 'lucide-react';
-import { usePageProductDetail } from '@/hooks/usePageProductDetail';  // Sử dụng hook để lấy dữ liệu sản phẩm
+import { usePageProductDetail } from '@/hooks/usePageProductDetail';
+import { deleteProduct } from '@/services/ProductsService';
 import { ImageWithFallback } from '../../components/figma/ImageWithFallback';
 
 export function ProductDetailPage() {
-  const { id } = useParams();  // Lấy productId từ URL
-  const { data: product, priceRange, images, loading, error } = usePageProductDetail(id);  // Lấy dữ liệu sản phẩm từ hook
+  const { id } = useParams();
+  const navigate = useNavigate();
 
-  const [selectedSize, setSelectedSize] = useState('');
-  const [selectedColor, setSelectedColor] = useState('');
-  const [selectedVariation, setSelectedVariation] = useState(null);  // Để lưu lựa chọn biến thể
-  const [selectedImage, setSelectedImage] = useState(null); // Để lưu ảnh biến thể đã chọn
+  const { data: product, loading, error } = usePageProductDetail(id);
+
+  const [selectedVariation, setSelectedVariation] = useState(null);
+  const [selectedImage, setSelectedImage] = useState(null);
 
   if (loading) {
     return (
@@ -32,7 +33,9 @@ export function ProductDetailPage() {
       <AdminLayout>
         <div className="text-center py-12">
           <h1 className="text-2xl font-bold">Product Not Found</h1>
-          <p className="text-muted-foreground mt-2">The product you are looking for does not exist.</p>
+          <p className="text-muted-foreground mt-2">
+            The product you are looking for does not exist.
+          </p>
           <Button asChild className="mt-4">
             <Link to="/admin/products">Back to Products</Link>
           </Button>
@@ -41,31 +44,64 @@ export function ProductDetailPage() {
     );
   }
 
-  const getStockBadge = (stock: number) => {
-    if (stock === 0) return <Badge variant="destructive">Out of Stock</Badge>;
-    if (stock < 10) return <Badge variant="secondary">Low Stock</Badge>;
+  const getStockBadge = (stock) => {
+    const qty = Number(stock ?? 0);
+    if (qty === 0) return <Badge variant="destructive">Out of Stock</Badge>;
+    if (qty < 10) return <Badge variant="secondary">Low Stock</Badge>;
     return <Badge variant="default">In Stock</Badge>;
   };
 
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = (statusObj) => {
+    const statusName =
+      statusObj?.productStatusName ||
+      statusObj?.name ||
+      (typeof statusObj === 'string' ? statusObj : 'Unknown');
+
+    const active =
+      statusName?.toLowerCase() === 'available' ||
+      statusName?.toLowerCase() === 'active';
+
     return (
-      <Badge variant={status === 'ACTIVE' ? 'default' : 'secondary'}>
-        {status.charAt(0).toUpperCase() + status.slice(1)}
+      <Badge variant={active ? 'default' : 'secondary'}>
+        {statusName || 'Unknown'}
       </Badge>
     );
   };
 
-  // Khi chọn biến thể, cập nhật ảnh sản phẩm và các thuộc tính khác
   const handleVariationChange = (variation) => {
-    setSelectedVariation(variation);  // Lưu biến thể đã chọn
-    setSelectedImage(variation.variationImage);  // Cập nhật ảnh khi chọn biến thể
+    setSelectedVariation(variation);
+    setSelectedImage(variation.variationImage || null);
   };
+
+  const handleDeleteProduct = async () => {
+    if (!window.confirm('Are you sure you want to delete this product?')) return;
+    try {
+      await deleteProduct(id);
+      navigate('/admin/products');
+    } catch (err) {
+      console.error('Delete failed:', err);
+      alert('Delete failed');
+    }
+  };
+
+  const mainImage =
+    selectedImage ||
+    (product.variations && product.variations.length > 0
+      ? product.variations[0].variationImage
+      : product.image);
+
+  const currentPrice =
+    selectedVariation && selectedVariation.variationPrice != null
+      ? selectedVariation.variationPrice
+      : null;
+
+  const stockQty = product.stock ?? 0;
 
   return (
     <AdminLayout>
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-wrap gap-4">
           <div className="flex items-center gap-4">
             <Button variant="ghost" asChild>
               <Link to="/admin/products">
@@ -75,16 +111,21 @@ export function ProductDetailPage() {
             </Button>
             <div>
               <h1 className="text-3xl font-bold">{product.productName}</h1>
-              <p className="text-muted-foreground">Product ID: {product.productId}</p>
+              <p className="text-muted-foreground">
+                Product ID: {product.productId}
+              </p>
             </div>
           </div>
 
           <div className="flex gap-2">
-            <Button variant="outline">
-              <Edit className="h-4 w-4 mr-2" />
-              Edit Product
+            <Button variant="outline" asChild>
+              <Link to={`/admin/products/${id}/edit`}>
+                <Edit className="h-4 w-4 mr-2" />
+                Edit Product
+              </Link>
             </Button>
-            <Button variant="destructive">
+
+            <Button variant="destructive" onClick={handleDeleteProduct}>
               <Trash2 className="h-4 w-4 mr-2" />
               Delete Product
             </Button>
@@ -99,7 +140,7 @@ export function ProductDetailPage() {
             </CardHeader>
             <CardContent>
               <ImageWithFallback
-                src={selectedImage || (product.variations && product.variations.length > 0 ? product.variations[0].variationImage : product.image)} // Lấy ảnh từ variation hoặc ảnh chính
+                src={mainImage}
                 alt={product.productName}
                 className="w-full h-64 object-cover rounded-md"
               />
@@ -114,47 +155,81 @@ export function ProductDetailPage() {
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="text-sm font-medium text-muted-foreground">Name</label>
+                  <label className="text-sm font-medium text-muted-foreground">
+                    Name
+                  </label>
                   <p className="text-base">{product.productName}</p>
                 </div>
+
                 <div>
-                  <label className="text-sm font-medium text-muted-foreground">Category</label>
-                  <p className="text-base">{product.categories?.map(c => c.categoryName).join(', ')}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground">Price</label>
-                  <p className="text-base font-semibold">
-                    {/* Hiển thị giá từ biến thể nếu có */}
-                    {selectedVariation ? `$${selectedVariation.variationPrice.toFixed(2)}` : 'Price not available'}
+                  <label className="text-sm font-medium text-muted-foreground">
+                    Category
+                  </label>
+                  <p className="text-base">
+                    {product.categories
+                      ?.map((c) => c.categoryName)
+                      .join(', ')}
                   </p>
                 </div>
+
                 <div>
-                  <label className="text-sm font-medium text-muted-foreground">Stock</label>
+                  <label className="text-sm font-medium text-muted-foreground">
+                    Price
+                  </label>
+                  <p className="text-base font-semibold">
+                    {currentPrice != null
+                      ? `$${Number(currentPrice).toFixed(2)}`
+                      : 'Price not selected'}
+                  </p>
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">
+                    Stock
+                  </label>
                   <div className="flex items-center gap-2">
-                    <span className="text-base">{product.stock}</span>
-                    {getStockBadge(product.stock)}
+                    <span className="text-base">{stockQty}</span>
+                    {getStockBadge(stockQty)}
                   </div>
                 </div>
+
                 <div>
-                  <label className="text-sm font-medium text-muted-foreground">Status</label>
-                  <div>{getStatusBadge(product.productStatus?.productStatusName)}</div>
+                  <label className="text-sm font-medium text-muted-foreground">
+                    Status
+                  </label>
+                  <div>{getStatusBadge(product.productStatus)}</div>
                 </div>
+
                 <div>
-                  <label className="text-sm font-medium text-muted-foreground">Total Value</label>
-                  <p className="text-base font-semibold">${(product.price * product.stock).toFixed(2)}</p>
+                  <label className="text-sm font-medium text-muted-foreground">
+                    Total Value
+                  </label>
+                  <p className="text-base font-semibold">
+                    {stockQty && currentPrice != null
+                      ? `$${(Number(currentPrice) * Number(stockQty)).toFixed(
+                          2
+                        )}`
+                      : '—'}
+                  </p>
                 </div>
               </div>
 
               {product.productDescription && (
                 <div>
-                  <label className="text-sm font-medium text-muted-foreground">Description</label>
-                  <p className="text-base mt-1">{product.productDescription}</p>
+                  <label className="text-sm font-medium text-muted-foreground">
+                    Description
+                  </label>
+                  <p className="text-base mt-1">
+                    {product.productDescription}
+                  </p>
                 </div>
               )}
 
               {product.tags && product.tags.length > 0 && (
                 <div>
-                  <label className="text-sm font-medium text-muted-foreground">Tags</label>
+                  <label className="text-sm font-medium text-muted-foreground">
+                    Tags
+                  </label>
                   <div className="flex flex-wrap gap-2 mt-1">
                     {product.tags.map((tag, index) => (
                       <Badge key={index} variant="outline">
@@ -178,21 +253,38 @@ export function ProductDetailPage() {
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {product.variations.map((variation) => (
                   <Card key={variation.variationId}>
-                    <CardContent className="pt-6">
-                      <div className="space-y-2">
-                        <ImageWithFallback
-                          src={variation.variationImage}
-                          alt={`${product.productName} - ${variation.color} ${variation.size}`}
-                          className="w-full h-32 object-cover rounded-md"
-                        />
-                        <h4 className="font-medium">{variation.color} - {variation.size}</h4>
-                        <p className="text-sm text-muted-foreground">Price: ${variation.variationPrice.toFixed(2)}</p>
-                        <p className="text-sm text-muted-foreground">Stock: {variation.stock}</p>
-                        {getStockBadge(variation.stock)}
-                        <Button variant="outline" onClick={() => handleVariationChange(variation)}>
-                          Select Variation
-                        </Button>
-                      </div>
+                    <CardContent className="pt-6 space-y-2">
+                      <ImageWithFallback
+                        src={variation.variationImage}
+                        alt={`${product.productName} - ${variation.color} ${variation.size}`}
+                        className="w-full h-32 object-cover rounded-md"
+                      />
+
+                      <h4 className="font-medium">
+                        {variation.color?.colorName ||
+                          variation.color ||
+                          '—'}{' '}
+                        -{' '}
+                        {variation.size?.sizeName ||
+                          variation.size ||
+                          '—'}
+                      </h4>
+
+                      <p className="text-sm text-muted-foreground">
+                        Price:{' '}
+                        {variation.variationPrice != null
+                          ? `$${Number(
+                              variation.variationPrice
+                            ).toFixed(2)}`
+                          : '—'}
+                      </p>
+
+                      <Button
+                        variant="outline"
+                        onClick={() => handleVariationChange(variation)}
+                      >
+                        Select Variation
+                      </Button>
                     </CardContent>
                   </Card>
                 ))}
@@ -201,7 +293,7 @@ export function ProductDetailPage() {
           </Card>
         )}
 
-        {/* Quick Stats */}
+        {/* Quick Stats (mock) */}
         <div className="grid gap-4 md:grid-cols-4">
           <Card>
             <CardContent className="pt-6">
