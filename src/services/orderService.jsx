@@ -61,17 +61,23 @@ const getOrderById = async (orderId) => {
 };
 
 /**
- * Lấy tất cả đơn hàng của người dùng đang đăng nhập.
- * @returns {Promise<any>} Danh sách đơn hàng.
+ * Lấy tất cả đơn hàng của người dùng đang đăng nhập (có phân trang).
+ * @param {number} pageNumber - Trang hiện tại (mặc định = 1)
+ * @param {number} pageSize - Số đơn hàng mỗi trang (mặc định = 10)
+ * @returns {Promise<any>} Kết quả phân trang chứa danh sách đơn hàng
  */
-const getMyOrders = async () => {
+const getMyOrders = async (pageNumber = 1, pageSize = 10) => {
     try {
-        const response = await apiClient.get(`${ORDER_API_PATH}/my-orders`);
+        const response = await apiClient.get(`${ORDER_API_PATH}/my-orders`, {
+            params: { pageNumber, pageSize },
+        });
+
         return response.data;
     } catch (error) {
         handleAxiosError(error);
     }
 };
+
 
 /**
  * Kiểm tra
@@ -123,9 +129,9 @@ const cancelOrder = async (orderId) => {
  * @param {boolean} isApproved - True nếu duyệt, false nếu từ chối.
  * @returns {Promise<any>} Thông báo từ server.
  */
-const reviewOrder = async (orderId, isApproved) => {
+const reviewOrder = async (orderId, orderStatus) => {
     try {
-        const reviewDto = { IsApproved: isApproved };
+        const reviewDto = { orderStatus };
         const response = await apiClient.put(`${ORDER_API_PATH}/${orderId}/staff-review`, reviewDto);
         return response.data;
     } catch (error) {

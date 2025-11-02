@@ -25,8 +25,8 @@ import { ContactPage } from '../pages/ContactPage';
 import { NotFoundPage } from '../pages/NotFoundPage';
 import { ServerErrorPage } from '../pages/ServerErrorPage';
 import { ForbiddenPage } from '../pages/ForbiddenPage';
-
 import { ProtectedRoute } from './ProtectedRoute';
+import CustomterOrderDetailPage from '../pages/CustomterOrderDetailPage';
 
 const CustomerLayout = () => (
     <div className="min-h-screen flex flex-col">
@@ -97,7 +97,14 @@ const CustomerRoutes = (
                 </ProtectedRoute>
             }
         />
-
+        <Route
+            path="/order/:orderId"
+            element={
+                <ProtectedRoute>
+                    <CustomterOrderDetailPage />
+                </ProtectedRoute>
+            }
+        />
         {/* Error pages */}
         <Route path="/403" element={<ForbiddenPage />} />
         <Route path="/500" element={<ServerErrorPage />} />

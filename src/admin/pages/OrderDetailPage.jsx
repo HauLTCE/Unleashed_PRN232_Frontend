@@ -12,7 +12,7 @@ import { useOrder } from '../../hooks/Order/useOrder'; // Giả sử hook ở đ
 // Cập nhật: Import useUser
 import { useUser } from '../../hooks/User/useUser'; // Tùy chọn: Dùng để lấy tên customer
 
-export function OrderDetailPage() {
+export default function OrderDetailPage() {
   const { id } = useParams();
 
   // 1. Sử dụng hook useOrder

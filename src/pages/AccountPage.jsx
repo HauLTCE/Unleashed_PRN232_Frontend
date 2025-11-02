@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { useSearchParams, useNavigate } from "react-router-dom";
+import { useSearchParams, useNavigate, Link } from "react-router-dom";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "../components/ui/button";
@@ -9,17 +9,12 @@ import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "../components/ui/avatar";
 import { Badge } from "../components/ui/badge";
-
 import { useAuth } from "../hooks/User/useAuth";
 import { useUser } from "../hooks/User/useUser";
 import { useImageUpload } from "../hooks/useImageUpload";
 import { useNotificationUsers } from "../hooks/NotificationUser/useNotificationUsers";
+import { useMyOrders } from "../hooks/Order/useMyOrders";
 
-// TEMP placeholder until orders API ready
-const mockOrders = [
-  { id: "#3456", date: "2025-10-14", total: 75.5, status: "delivered" },
-  { id: "#3455", date: "2025-10-10", total: 120.0, status: "shipped" },
-];
 
 export function AccountPage() {
   const [searchParams] = useSearchParams();
@@ -29,7 +24,16 @@ export function AccountPage() {
   const { user, loading: userLoading, editUser } = useUser(userId);
 
   const [activeTab, setActiveTab] = useState(searchParams.get("tab") || "profile");
-  const [orders] = useState(mockOrders);
+  const {
+    orders,
+    loading: ordersLoading,
+    error: ordersError,
+    pageNumber: ordersPageNum,
+    totalPages: ordersTotalPages,
+    setPageNumber: setOrdersPageNum,
+    refresh: refreshOrders
+  } = useMyOrders();
+
 
   const [selectedNotification, setSelectedNotification] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -244,6 +248,79 @@ export function AccountPage() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        <TabsContent value="orders" className="mt-6">
+          <Card>
+            <CardHeader className="flex justify-between items-center">
+              <CardTitle>My Orders</CardTitle>
+              <Button variant="outline" onClick={refreshOrders}>Refresh</Button>
+            </CardHeader>
+
+            <CardContent>
+              {ordersLoading ? (
+                <p className="text-center py-8">Loading orders...</p>
+              ) : ordersError ? (
+                <p className="text-center text-red-500 py-8">{ordersError}</p>
+              ) : orders.length === 0 ? (
+                <p className="text-center text-muted-foreground py-8">You have no orders yet.</p>
+              ) : (
+                <>
+                  <div className="space-y-4" id="ordersList">
+                    {orders.map((o) => (
+                      <Link
+                        to={`/order/${o.orderId}`}
+                        key={o.orderId}
+                        className="border rounded-lg p-4 flex justify-between items-center hover:bg-gray-50 transition"
+                      >
+                        <div>
+                          <p className="font-medium">Order #{o.orderTrackingNumber}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {new Date(o.orderDate).toLocaleDateString()}
+                          </p>
+                        </div>
+
+                        <div className="text-right">
+                          <p className="font-semibold">${o.orderTotalAmount?.toFixed(2)}</p>
+                          <Badge variant="outline">{o.orderStatusName}</Badge>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+
+                  {/* 🔥 PAGINATION */}
+                  <div className="flex justify-between items-center mt-6 pt-4 border-t">
+                    <Button
+                      variant="outline"
+                      disabled={ordersPageNum <= 1}
+                      onClick={() => {
+                        setOrdersPageNum((p) => p - 1);
+                        document.getElementById("ordersList")?.scrollIntoView({ behavior: "smooth" });
+                      }}
+                    >
+                      Previous
+                    </Button>
+
+                    <span className="text-sm text-muted-foreground">
+                      Page {ordersPageNum} of {ordersTotalPages}
+                    </span>
+
+                    <Button
+                      variant="outline"
+                      disabled={ordersPageNum >= ordersTotalPages}
+                      onClick={() => {
+                        setOrdersPageNum((p) => p + 1);
+                        document.getElementById("ordersList")?.scrollIntoView({ behavior: "smooth" });
+                      }}
+                    >
+                      Next
+                    </Button>
+                  </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
 
         {/* ---------------- NOTIFICATIONS TAB ---------------- */}
         <TabsContent value="notifications" className="mt-6">
