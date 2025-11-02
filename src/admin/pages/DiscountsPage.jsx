@@ -51,7 +51,6 @@ const getStatusBadge = (status) => {
   return <Badge variant="outline">{status}</Badge>;
 };
 
-// --- Component ViewDiscountDialog ---
 function ViewDiscountDialog({ isOpen, onOpenChange, discount }) {
   if (!discount) return null;
 
@@ -104,7 +103,6 @@ function ViewDiscountDialog({ isOpen, onOpenChange, discount }) {
   );
 }
 
-// --- Component EditDiscountDialog ---
 function EditDiscountDialog({ isOpen, onOpenChange, discount, onSave, isSaving }) {
   const [editedDiscount, setEditedDiscount] = React.useState(discount);
 

@@ -1,30 +1,30 @@
-import React from 'react';
-import { Route, Outlet } from 'react-router-dom';
+import { Outlet, Route } from 'react-router-dom';
 
-import { Header } from '../components/Header';
 import { Footer } from '../components/Footer';
+import { Header } from '../components/Header';
 
 // Pages
+import { AboutPage } from '../pages/AboutPage';
+import { AccountPage } from '../pages/AccountPage';
+import { CartPage } from '../pages/CartPage';
+import { CheckoutFailedPage } from '../pages/CheckoutFailedPage';
+import { CheckoutPage } from '../pages/CheckoutPage';
+import { CheckoutPendingPage } from '../pages/CheckoutPendingPage';
+import { CheckoutSuccessPage } from '../pages/CheckoutSuccessPage';
+import { ConfirmEmailPage } from '../pages/ConfirmEmailPage';
+import { ContactPage } from '../pages/ContactPage';
+import { ForbiddenPage } from '../pages/ForbiddenPage';
+import { ForgotPasswordPage } from '../pages/ForgotPasswordPage';
 import { Homepage } from '../pages/Homepage';
 import { LoginPage } from '../pages/LoginPage';
-import { SignupPage } from '../pages/SignupPage';
-import { ForgotPasswordPage } from '../pages/ForgotPasswordPage';
-import { ConfirmEmailPage } from '../pages/ConfirmEmailPage';
-import { ResetPasswordPage } from '../pages/ResetPasswordPage';
-import { ShopPage } from '../pages/ShopPage';
-import { ProductDetailPage } from '../pages/ProductDetailPage';
-import { CartPage } from '../pages/CartPage';
-import { WishlistPage } from '../pages/WishlistPage';
-import { CheckoutPage } from '../pages/CheckoutPage';
-import { CheckoutSuccessPage } from '../pages/CheckoutSuccessPage';
-import { CheckoutFailedPage } from '../pages/CheckoutFailedPage';
-import { CheckoutPendingPage } from '../pages/CheckoutPendingPage';
-import { AccountPage } from '../pages/AccountPage';
-import { AboutPage } from '../pages/AboutPage';
-import { ContactPage } from '../pages/ContactPage';
 import { NotFoundPage } from '../pages/NotFoundPage';
+import { ProductDetailPage } from '../pages/ProductDetailPage';
+import { ResetPasswordPage } from '../pages/ResetPasswordPage';
 import { ServerErrorPage } from '../pages/ServerErrorPage';
-import { ForbiddenPage } from '../pages/ForbiddenPage';
+import { ShopPage } from '../pages/ShopPage';
+import { SignupPage } from '../pages/SignupPage';
+import { WishlistPage } from '../pages/WishlistPage';
+
 import { ProtectedRoute } from './ProtectedRoute';
 import CustomterOrderDetailPage from '../pages/CustomterOrderDetailPage';
 

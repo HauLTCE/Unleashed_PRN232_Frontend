@@ -1,7 +1,7 @@
 
-import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react-swc';
 import path from 'path';
+import { defineConfig } from 'vite';
 
 export default defineConfig({
   plugins: [react()],
@@ -183,8 +183,13 @@ export default defineConfig({
         secure: false,
         changeOrigin: true,
       },
-      '/api/comments': {
+      '/api/Comments': {
         target: 'https://localhost:7164',
+        secure: false,
+        changeOrigin: true,
+      },
+      '/api/cart': {
+        target: 'https://localhost:7287',
         secure: false,
         changeOrigin: true,
       },
