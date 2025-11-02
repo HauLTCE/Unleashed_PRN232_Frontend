@@ -52,7 +52,7 @@ export const useNotifications = () => {
      */
     const createNotification = useCallback(async (createDto) => {
         try {
-            await notificationService.createNotification(createDto);
+            return await notificationService.createNotification(createDto);
         } catch (err) {
             console.error("Failed to create notification:", err);
             setError(err); // Or handle create-specific errors

@@ -25,15 +25,6 @@ import {
 } from '../../components/ui/select';
 import { Badge } from '../../components/ui/badge';
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '../../components/ui/dialog';
-import { Label } from '../../components/ui/label';
-import { Textarea } from '../../components/ui/textarea';
-import {
   Pagination,
   PaginationContent,
   PaginationItem,
@@ -41,19 +32,17 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from '../../components/ui/pagination';
-import { Plus, Search, Edit, Trash2, Eye, X } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, Eye } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { ImageWithFallback } from '../../components/figma/ImageWithFallback';
 
 import { usePagedProducts } from '@/hooks/usePagedProducts';
-import { useBrands } from '@/hooks/useBrands';
 import { useCategories } from '@/hooks/useCategories';
 import { useVariationOptions } from '@/hooks/useVariationOptions';
-
-import { createProduct, deleteProduct } from '@/services/ProductsService';
+import { deleteProduct } from '@/services/ProductsService';
 
 export function ProductsPage() {
-  // 1. Danh sách sản phẩm phân trang
+  // data phân trang
   const {
     items: products,
     totalPages,
@@ -68,53 +57,21 @@ export function ProductsPage() {
     onlyActiveProducts: false,
   });
 
-  // 2. Master data (dropdown)
-  const { brands } = useBrands();
+  // dropdown filter
   const { categories } = useCategories();
-  const { sizes, colors, productStatuses } = useVariationOptions();
+  const { productStatuses } = useVariationOptions();
 
-  // 3. Local state cho filter list
+  // local filter state
   const [searchQuery, setSearchQuery] = React.useState('');
-  const [categoryFilter, setCategoryFilter] = React.useState('all'); // categoryId filter
-  const [statusFilter, setStatusFilter] = React.useState('all');     // productStatusId filter
+  const [categoryFilter, setCategoryFilter] = React.useState('all');
+  const [statusFilter, setStatusFilter] = React.useState('all');
 
-  // 4. Popup state
-  const [isAddDialogOpen, setIsAddDialogOpen] = React.useState(false);
-
-  // 5. Form tạo sản phẩm mới (thông tin chung)
-  const emptyProductForm = React.useMemo(
-    () => ({
-      productName: '',
-      productCode: '',
-      productDescription: '',
-      brandId: '',
-      categoryId: '',
-      productStatusId: '',
-    }),
-    []
-  );
-
-  const [newProduct, setNewProduct] = React.useState(emptyProductForm);
-
-  // 6. Variation list (nhiều biến thể / màu / size / giá)
-  const emptyVariation = React.useMemo(
-    () => ({
-      sizeId: '',
-      colorId: '',
-      variationPrice: '',
-      variationImage: '', // local preview URL tạm
-    }),
-    []
-  );
-
-  const [variations, setVariations] = React.useState([{ ...emptyVariation }]);
-
-  // 7. Đồng bộ search -> hook usePagedProducts (debounced bên trong)
+  // đồng bộ search
   React.useEffect(() => {
     setSearch(searchQuery);
   }, [searchQuery, setSearch]);
 
-  // 8. Đồng bộ filter -> hook usePagedProducts
+  // đồng bộ filter
   React.useEffect(() => {
     const filters = {};
     if (categoryFilter !== 'all') {
@@ -126,7 +83,7 @@ export function ProductsPage() {
     setFilters(filters);
   }, [categoryFilter, statusFilter, setFilters]);
 
-  // --- Helpers hiển thị badge tồn kho ---
+  // badge tồn kho
   const getStockBadge = (stock) => {
     const qty = Number(stock ?? 0);
     if (qty === 0) return <Badge variant="destructive">Out of Stock</Badge>;
@@ -134,12 +91,14 @@ export function ProductsPage() {
     return <Badge variant="default">In Stock</Badge>;
   };
 
-  // --- Helpers hiển thị badge trạng thái ---
-  const getStatusBadge = (statusObj) => {
+  // badge trạng thái
+  const getStatusBadge = (statusLike) => {
     const statusName =
-      statusObj?.productStatusName ||
-      statusObj?.name ||
-      (typeof statusObj === 'string' ? statusObj : 'Unknown');
+      typeof statusLike === 'string'
+        ? statusLike
+        : statusLike?.productStatusName ||
+          statusLike?.name ||
+          'Unknown';
 
     const active =
       statusName?.toLowerCase() === 'available' ||
@@ -152,76 +111,7 @@ export function ProductsPage() {
     );
   };
 
-  // ====== HANDLERS CHO VARIATIONS ======
-
-  // Cập nhật 1 field trong variation i
-  const updateVariationField = (i, field, value) => {
-    setVariations((prev) => {
-      const clone = [...prev];
-      clone[i] = { ...clone[i], [field]: value };
-      return clone;
-    });
-  };
-
-  // Thêm biến thể mới
-  const addVariation = () => {
-    setVariations((prev) => [...prev, { ...emptyVariation }]);
-  };
-
-  // Xoá biến thể i (giữ lại ít nhất 1)
-  const removeVariation = (i) => {
-    setVariations((prev) => {
-      if (prev.length === 1) {
-        return prev; // không cho xoá hết sạch
-      }
-      const clone = [...prev];
-      clone.splice(i, 1);
-      return clone;
-    });
-  };
-
-  // Chọn ảnh cho variation -> thay vì upload, nhập vào URL string
-  const handleVariationImageChange = (i, value) => {
-    if (!value) return;
-    updateVariationField(i, 'variationImage', value);  // Thay vì tạo URL từ file, sử dụng giá trị string
-  };
-
-  // Submit tạo product
-  const handleAddProduct = async () => {
-    try {
-      const payload = {
-        productName: newProduct.productName,
-        productCode: newProduct.productCode,
-        productDescription: newProduct.productDescription,
-        brandId: Number(newProduct.brandId) || 0,
-        productStatusId: Number(newProduct.productStatusId) || 0,
-        categoryIds: newProduct.categoryId
-          ? [Number(newProduct.categoryId)]
-          : [],
-        variations: variations.map((v) => ({
-          sizeId: Number(v.sizeId) || 0,
-          colorId: Number(v.colorId) || 0,
-          variationImage: v.variationImage || '',
-          variationPrice: Number(v.variationPrice) || 0,
-        })),
-      };
-
-      await createProduct(payload);
-
-      // Reset form sau khi tạo thành công
-      setNewProduct(emptyProductForm);
-      setVariations([{ ...emptyVariation }]);
-      setIsAddDialogOpen(false);
-
-      // Reload list
-      refetch();
-    } catch (err) {
-      console.error('Failed to add product:', err);
-      alert('Failed to add product');
-    }
-  };
-
-  // Xoá product
+  // xoá product
   const handleDeleteProduct = async (id) => {
     if (!window.confirm('Are you sure you want to delete this product?')) return;
     try {
@@ -233,61 +123,10 @@ export function ProductsPage() {
     }
   };
 
-  // Render dropdown options
-  const renderBrandOptions = () =>
-    (brands || []).map((b) => (
-      <SelectItem
-        key={b.brandId || b.id}
-        value={String(b.brandId || b.id)}
-      >
-        {b.brandName || b.name || `Brand #${b.brandId || b.id}`}
-      </SelectItem>
-    ));
-
-  const renderCategoryOptions = () =>
-    (categories || []).map((cat) => (
-      <SelectItem
-        key={cat.categoryId || cat.id}
-        value={String(cat.categoryId || cat.id)}
-      >
-        {cat.categoryName || cat.name || `Category #${cat.categoryId || cat.id}`}
-      </SelectItem>
-    ));
-
-  const renderStatusOptions = () =>
-    (productStatuses || []).map((ps) => (
-      <SelectItem
-        key={ps.productStatusId || ps.id}
-        value={String(ps.productStatusId || ps.id)}
-      >
-        {ps.productStatusName || ps.name || `Status #${ps.productStatusId || ps.id}`}
-      </SelectItem>
-    ));
-
-  const renderSizeOptions = () =>
-    (sizes || []).map((s) => (
-      <SelectItem
-        key={s.sizeId || s.id}
-        value={String(s.sizeId || s.id)}
-      >
-        {s.sizeName || s.name || `Size #${s.sizeId || s.id}`}
-      </SelectItem>
-    ));
-
-  const renderColorOptions = () =>
-    (colors || []).map((c) => (
-      <SelectItem
-        key={c.colorId || c.id}
-        value={String(c.colorId || c.id)}
-      >
-        {c.colorName || c.name || `Color #${c.colorId || c.id}`}
-      </SelectItem>
-    ));
-
   return (
     <AdminLayout>
       <div className="space-y-6">
-        {/* HEADER TOP OF PAGE */}
+        {/* HEADER */}
         <div className="flex justify-between items-start">
           <div>
             <h1 className="text-3xl font-bold">Products Management</h1>
@@ -296,260 +135,13 @@ export function ProductsPage() {
             </p>
           </div>
 
-          {/* ADD PRODUCT DIALOG */}
-          <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="h-4 w-4 mr-2" />
-                Add New Product
-              </Button>
-            </DialogTrigger>
-
-            <DialogContent className="max-w-xl w-full h-[80vh] p-0 flex flex-col overflow-hidden">
-              {/* Header cố định */}
-              <DialogHeader className="px-6 py-4 border-b shrink-0">
-                <DialogTitle>Add New Product</DialogTitle>
-              </DialogHeader>
-
-              {/* Body có scrollbar luôn */}
-              <div className="flex-1 overflow-y-scroll px-6 py-4 space-y-6">
-                {/* ============== THÔNG TIN SẢN PHẨM ============== */}
-                <div className="space-y-4">
-                  {/* Product Name */}
-                  <div>
-                    <Label htmlFor="productName">Product Name</Label>
-                    <Input
-                      id="productName"
-                      value={newProduct.productName}
-                      onChange={(e) =>
-                        setNewProduct({
-                          ...newProduct,
-                          productName: e.target.value,
-                        })
-                      }
-                    />
-                  </div>
-
-                  {/* Product Code */}
-                  <div>
-                    <Label htmlFor="productCode">Product Code</Label>
-                    <Input
-                      id="productCode"
-                      value={newProduct.productCode}
-                      onChange={(e) =>
-                        setNewProduct({
-                          ...newProduct,
-                          productCode: e.target.value,
-                        })
-                      }
-                    />
-                  </div>
-
-                  {/* Brand */}
-                  <div>
-                    <Label htmlFor="brandId">Brand</Label>
-                    <Select
-                      value={newProduct.brandId}
-                      onValueChange={(v) =>
-                        setNewProduct({
-                          ...newProduct,
-                          brandId: v,
-                        })
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select brand" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {renderBrandOptions()}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {/* Category */}
-                  <div>
-                    <Label htmlFor="categoryId">Category</Label>
-                    <Select
-                      value={newProduct.categoryId}
-                      onValueChange={(v) =>
-                        setNewProduct({
-                          ...newProduct,
-                          categoryId: v,
-                        })
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select category" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {renderCategoryOptions()}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {/* Status */}
-                  <div>
-                    <Label htmlFor="productStatusId">Status</Label>
-                    <Select
-                      value={newProduct.productStatusId}
-                      onValueChange={(v) =>
-                        setNewProduct({
-                          ...newProduct,
-                          productStatusId: v,
-                        })
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select status" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {renderStatusOptions()}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {/* Description */}
-                  <div>
-                    <Label htmlFor="productDescription">Description</Label>
-                    <Textarea
-                      id="productDescription"
-                      value={newProduct.productDescription}
-                      onChange={(e) =>
-                        setNewProduct({
-                          ...newProduct,
-                          productDescription: e.target.value,
-                        })
-                      }
-                    />
-                  </div>
-                </div>
-
-                {/* ============== DANH SÁCH VARIATIONS ============== */}
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div className="font-semibold text-sm text-muted-foreground">
-                      Variations
-                    </div>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      onClick={addVariation}
-                    >
-                      <Plus className="h-4 w-4 mr-1" />
-                      Add Variation
-                    </Button>
-                  </div>
-
-                  <div className="border rounded-lg p-4 space-y-4 max-h-[260px] overflow-y-auto">
-                    {variations.map((v, i) => (
-                      <div
-                        key={i}
-                        className="border rounded-md p-4 relative bg-muted/10"
-                      >
-                        <button
-                          type="button"
-                          className="absolute top-2 right-2 text-muted-foreground hover:text-destructive"
-                          onClick={() => removeVariation(i)}
-                          title="Remove this variation"
-                        >
-                          <X className="h-4 w-4" />
-                        </button>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          {/* Size */}
-                          <div>
-                            <Label>Size</Label>
-                            <Select
-                              value={v.sizeId}
-                              onValueChange={(val) =>
-                                updateVariationField(i, 'sizeId', val)
-                              }
-                            >
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select size" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {renderSizeOptions()}
-                              </SelectContent>
-                            </Select>
-                          </div>
-
-                          {/* Color */}
-                          <div>
-                            <Label>Color</Label>
-                            <Select
-                              value={v.colorId}
-                              onValueChange={(val) =>
-                                updateVariationField(i, 'colorId', val)
-                              }
-                            >
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select color" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {renderColorOptions()}
-                              </SelectContent>
-                            </Select>
-                          </div>
-
-                          {/* Price */}
-                          <div>
-                            <Label>Price</Label>
-                            <Input
-                              type="number"
-                              value={v.variationPrice}
-                              onChange={(e) =>
-                                updateVariationField(
-                                  i,
-                                  'variationPrice',
-                                  e.target.value
-                                )
-                              }
-                            />
-                          </div>
-
-                          {/* Image input & preview */}
-                          <div className="flex flex-col gap-2">
-                            <Label>Image</Label>
-
-                            {v.variationImage ? (
-                              <img
-                                src={v.variationImage}
-                                alt="preview"
-                                className="h-16 w-16 rounded-md object-cover border"
-                              />
-                            ) : (
-                              <div className="h-16 w-16 rounded-md border bg-muted flex items-center justify-center text-xs text-muted-foreground">
-                                No image
-                              </div>
-                            )}
-
-                            <Input
-                              type="text"
-                              placeholder="Enter image URL"
-                              value={v.variationImage || ''}
-                              onChange={(e) => {
-                                const value = e.target.value;
-                                handleVariationImageChange(i, value);  // Cập nhật bằng giá trị string nhập vào
-                              }}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              {/* Footer cố định */}
-              <div className="px-6 py-4 border-t shrink-0">
-                <Button onClick={handleAddProduct} className="w-full">
-                  Add Product
-                </Button>
-              </div>
-            </DialogContent>
-          </Dialog>
+          {/* Nút chuyển sang trang create */}
+          <Button asChild>
+            <Link to="/admin/products/create">
+              <Plus className="h-4 w-4 mr-2" />
+              Add New Product
+            </Link>
+          </Button>
         </div>
 
         {/* FILTER BAR */}
@@ -582,7 +174,9 @@ export function ProductsPage() {
                       key={cat.categoryId || cat.id}
                       value={String(cat.categoryId || cat.id)}
                     >
-                      {cat.categoryName || cat.name || `Category #${cat.categoryId || cat.id}`}
+                      {cat.categoryName ||
+                        cat.name ||
+                        `Category #${cat.categoryId || cat.id}`}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -603,7 +197,9 @@ export function ProductsPage() {
                       key={ps.productStatusId || ps.id}
                       value={String(ps.productStatusId || ps.id)}
                     >
-                      {ps.productStatusName || ps.name || `Status #${ps.productStatusId || ps.id}`}
+                      {ps.productStatusName ||
+                        ps.name ||
+                        `Status #${ps.productStatusId || ps.id}`}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -633,21 +229,43 @@ export function ProductsPage() {
                     <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
+
                 <TableBody>
                   {products.map((product) => {
+                    // Ảnh ưu tiên: variation[0].variationImage -> product.variationImage -> category image -> fallback
                     const imgSrc =
                       product.variations?.[0]?.variationImage ||
+                      product.variationImage ||
                       product.categories?.[0]?.categoryImageUrl ||
+                      product.categoryList?.[0]?.categoryImageUrl ||
                       '/placeholder.png';
 
+                    // Tên category: ưu tiên categories[0] -> categoryList[0]
                     const categoryName =
-                      product.categories?.[0]?.categoryName || 'Uncategorized';
+                      (product.categories &&
+                        product.categories[0] &&
+                        product.categories[0].categoryName) ||
+                      (product.categoryList &&
+                        product.categoryList[0] &&
+                        product.categoryList[0].categoryName) ||
+                      'Uncategorized';
 
-                    const stockQty = product.stockQuantity ?? 0;
+                    // Số lượng tồn kho: ưu tiên quantity -> stockQuantity -> 0
+                    const stockQty =
+                      product.quantity ??
+                      product.stockQuantity ??
+                      0;
+
+                    // Trạng thái
+                    const statusLike =
+                      product.productStatus ||
+                      product.productStatusName ||
+                      product.status ||
+                      null;
 
                     return (
                       <TableRow key={product.productId}>
-                        {/* Product col */}
+                        {/* Product */}
                         <TableCell>
                           <div className="flex items-center gap-3">
                             <ImageWithFallback
@@ -659,7 +277,7 @@ export function ProductsPage() {
                               <div className="font-medium">
                                 {product.productName}
                               </div>
-                              <div className="text-sm text-muted-foreground">
+                              <div className="text-sm text-muted-foreground break-all">
                                 ID: {product.productId}
                               </div>
                             </div>
@@ -679,24 +297,34 @@ export function ProductsPage() {
 
                         {/* Status */}
                         <TableCell>
-                          {getStatusBadge(product.productStatus)}
+                          {getStatusBadge(statusLike)}
                         </TableCell>
 
                         {/* Actions */}
                         <TableCell>
                           <div className="flex items-center gap-2">
                             <Button variant="ghost" size="sm" asChild>
-                              <Link to={`/admin/products/${product.productId}`}>
+                              <Link
+                                to={`/admin/products/${product.productId}`}
+                              >
                                 <Eye className="h-4 w-4" />
                               </Link>
                             </Button>
-                            <Button variant="ghost" size="sm">
-                              <Edit className="h-4 w-4" />
+
+                            <Button variant="ghost" size="sm" asChild>
+                              <Link
+                                to={`/admin/products/${product.productId}/edit`}
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Link>
                             </Button>
+
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => handleDeleteProduct(product.productId)}
+                              onClick={() =>
+                                handleDeleteProduct(product.productId)
+                              }
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>

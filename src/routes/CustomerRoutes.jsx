@@ -1,13 +1,17 @@
 import { Outlet, Route } from 'react-router-dom';
 
-// Import layout components
+import { Header } from '../components/Header';
 import { Footer } from '../components/Footer';
 import { Header } from '../components/Header';
 
-// Import all customer-facing pages
+// Pages
 import { Homepage } from '../pages/Homepage';
 import { LoginPage } from '../pages/LoginPage';
-// ... (all your other page imports)
+import { SignupPage } from '../pages/SignupPage';
+import { ForgotPasswordPage } from '../pages/ForgotPasswordPage';
+import { ConfirmEmailPage } from '../pages/ConfirmEmailPage';
+import { ResetPasswordPage } from '../pages/ResetPasswordPage';
+import { ShopPage } from '../pages/ShopPage';
 import { ProductDetailPage } from '../pages/ProductDetailPage';
 import { ShopPage } from '../pages/ShopPage';
 import { SignupPage } from '../pages/SignupPage';
@@ -23,16 +27,9 @@ import { CheckoutSuccessPage } from '../pages/CheckoutSuccessPage';
 import { ConfirmEmailPage } from '../pages/ConfirmEmailPage';
 import { ContactPage } from '../pages/ContactPage';
 import { ForbiddenPage } from '../pages/ForbiddenPage';
-import { ForgotPasswordPage } from '../pages/ForgotPasswordPage';
-import { NotFoundPage } from '../pages/NotFoundPage';
-import { ResetPasswordPage } from '../pages/ResetPasswordPage';
-import { ServerErrorPage } from '../pages/ServerErrorPage';
-import { WishlistPage } from '../pages/WishlistPage';
 
-/**
- * Layout component for customer routes.
- * This remains a standard component.
- */
+import { ProtectedRoute } from './ProtectedRoute';
+
 const CustomerLayout = () => (
     <div className="min-h-screen flex flex-col">
         <Header />
@@ -43,12 +40,9 @@ const CustomerLayout = () => (
     </div>
 );
 
-/**
- * This is now a JSX element (a <Route> element), not a component.
- * It's a valid child for the <Routes> component.
- */
 const CustomerRoutes = (
     <Route element={<CustomerLayout />}>
+        {/* Public routes */}
         <Route path="/" element={<Homepage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignupPage />} />
@@ -57,15 +51,56 @@ const CustomerRoutes = (
         <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route path="/shop" element={<ShopPage />} />
         <Route path="/product/:id" element={<ProductDetailPage />} />
-        <Route path="/cart" element={<CartPage />} />
-        <Route path="/wishlist" element={<WishlistPage />} />
-        <Route path="/checkout" element={<CheckoutPage />} />
-        <Route path="/checkout/success" element={<CheckoutSuccessPage />} />
-        <Route path="/checkout/failed" element={<CheckoutFailedPage />} />
-        <Route path="/checkout/pending" element={<CheckoutPendingPage />} />
-        <Route path="/account" element={<AccountPage />} />
         <Route path="/about" element={<AboutPage />} />
         <Route path="/contact" element={<ContactPage />} />
+
+        {/* Semi-public */}
+        <Route path="/cart" element={<CartPage />} />
+        <Route path="/wishlist" element={<WishlistPage />} />
+
+        {/* Protected routes */}
+        <Route
+            path="/account"
+            element={
+                <ProtectedRoute>
+                    <AccountPage />
+                </ProtectedRoute>
+            }
+        />
+        <Route
+            path="/checkout"
+            element={
+                <ProtectedRoute>
+                    <CheckoutPage />
+                </ProtectedRoute>
+            }
+        />
+        <Route
+            path="/checkout/success"
+            element={
+                <ProtectedRoute>
+                    <CheckoutSuccessPage />
+                </ProtectedRoute>
+            }
+        />
+        <Route
+            path="/checkout/failed"
+            element={
+                <ProtectedRoute>
+                    <CheckoutFailedPage />
+                </ProtectedRoute>
+            }
+        />
+        <Route
+            path="/checkout/pending"
+            element={
+                <ProtectedRoute>
+                    <CheckoutPendingPage />
+                </ProtectedRoute>
+            }
+        />
+
+        {/* Error pages */}
         <Route path="/403" element={<ForbiddenPage />} />
         <Route path="/500" element={<ServerErrorPage />} />
         <Route path="*" element={<NotFoundPage />} />

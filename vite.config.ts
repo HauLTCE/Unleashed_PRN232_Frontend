@@ -125,8 +125,8 @@ export default defineConfig({
         secure: false,
         changeOrigin: true,
       },
-      '/Upload': {
-        target: 'https://localhost:64613',
+      '/api/Upload': {
+        target: 'https://localhost:7096',
         //target: 'https://localhost:55962',
         secure: false,
         changeOrigin: true,
@@ -136,6 +136,11 @@ export default defineConfig({
         secure: false, // cuz this is dev
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api\/notifications/, ''), // Remove /api/orders
+      },
+      '/api/NotificationUsers': {
+        target: 'https://localhost:7158',
+        secure: false, // cuz this is dev
+        changeOrigin: true,
       },
       '/api/Order': {
         target: 'https://localhost:7043',
