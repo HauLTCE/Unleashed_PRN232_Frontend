@@ -1,22 +1,24 @@
 import React from 'react';
 import { AdminLayout } from '../components/AdminLayout';
-import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '../../components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui/table';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
-import { Badge } from '../../components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../../components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from '../../components/ui/dialog';
 import { Label } from '../../components/ui/label';
 import {
   Plus,
   Edit,
   Trash2,
   Eye,
-  Star,
+  ChevronLeft,
+  ChevronRight,
+  Upload as UploadIcon,
+  Image as ImageIcon,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useProviders } from '../../hooks/Inventory/useProviders';
+import { useImageUpload } from '../../hooks/useImageUpload';
 
 const ITEMS_PER_PAGE = 10;
 
@@ -30,13 +32,18 @@ export function SuppliersPage() {
     deleteProvider,
   } = useProviders();
 
+  const {
+    uploadFile,
+    loading: uploadingImage,
+    error: uploadError,
+  } = useImageUpload();
+
   const [searchQuery, setSearchQuery] = React.useState('');
-  const [statusFilter, setStatusFilter] = React.useState('all');
   const [currentPage, setCurrentPage] = React.useState(1);
   const [isAddDialogOpen, setIsAddDialogOpen] = React.useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
   const [isViewDialogOpen, setIsViewDialogOpen] = React.useState(false);
-  const [selectedSupplier, setSelectedSupplier] = React.useState(null);
+  const [selectedProvider, setSelectedProvider] = React.useState(null);
   const [newProvider, setNewProvider] = React.useState({
     providerName: '',
     providerImageUrl: '',
@@ -45,13 +52,12 @@ export function SuppliersPage() {
     providerAddress: '',
   });
 
+  const addFileInputRef = React.useRef(null);
+  const editFileInputRef = React.useRef(null);
 
-  // Filter suppliers
-  const filteredSuppliers = React.useMemo(() => {
+  const filteredProviders = React.useMemo(() => {
     if (!Array.isArray(providers)) return [];
-
     const query = searchQuery.toLowerCase();
-
     return providers.filter((provider) => {
       return (
         provider.providerName?.toLowerCase().includes(query) ||
@@ -62,20 +68,45 @@ export function SuppliersPage() {
     });
   }, [providers, searchQuery]);
 
-
-  // Pagination
-  const totalPages = Math.ceil(filteredSuppliers.length / ITEMS_PER_PAGE);
-  const paginatedSuppliers = filteredSuppliers.slice(
+  const totalPages = Math.ceil(filteredProviders.length / ITEMS_PER_PAGE);
+  const paginatedProviders = filteredProviders.slice(
     (currentPage - 1) * ITEMS_PER_PAGE,
     currentPage * ITEMS_PER_PAGE
   );
 
-  const handleAddSupplier = async () => {
+  const handleSelectFileForNewProvider = async (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    try {
+      const res = await uploadFile(file);
+      if (res && res.imageUrl) {
+        setNewProvider(prev => ({ ...prev, providerImageUrl: res.imageUrl }));
+      }
+    } catch (err) {
+      toast.error('Image upload failed.');
+    }
+    e.target.value = '';
+  };
+
+  const handleSelectFileForSelectedProvider = async (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    try {
+      const res = await uploadFile(file);
+      if (res && res.imageUrl) {
+        setSelectedProvider(prev => ({ ...prev, providerImageUrl: res.imageUrl }));
+      }
+    } catch (err) {
+      toast.error('Image upload failed.');
+    }
+    e.target.value = '';
+  };
+
+  const handleAddProvider = async () => {
     if (!newProvider.providerName) {
       toast.error('Provider name is required');
       return;
     }
-
     try {
       await createProvider(newProvider);
       toast.success('Provider added successfully');
@@ -92,49 +123,31 @@ export function SuppliersPage() {
     }
   };
 
-
-  const handleEditSupplier = async () => {
-    if (!selectedSupplier) return;
+  const handleEditProvider = async () => {
+    if (!selectedProvider) return;
     try {
-      await updateProvider(selectedSupplier.providerId, selectedSupplier);
-      toast.success('Supplier updated successfully');
+      await updateProvider(selectedProvider.providerId, selectedProvider);
+      toast.success('Provider updated successfully');
       setIsEditDialogOpen(false);
-      setSelectedSupplier(null);
+      setSelectedProvider(null);
     } catch {
-      toast.error('Failed to update supplier');
+      toast.error('Failed to update provider');
     }
   };
 
-  const handleDeleteSupplier = async (id) => {
+  const handleDeleteProvider = async (id) => {
     try {
       await deleteProvider(id);
-      toast.success('Supplier deleted successfully');
+      toast.success('Provider deleted successfully');
     } catch {
-      toast.error('Failed to delete supplier');
+      toast.error('Failed to delete provider');
     }
-  };
-
-  const getStatusBadge = (status) => {
-    switch (status) {
-      case 'active':
-        return <Badge className="bg-green-100 text-green-800 border-green-300">Active</Badge>;
-      case 'inactive':
-        return <Badge className="bg-red-100 text-red-800 border-red-300">Inactive</Badge>;
-      default:
-        return <Badge variant="outline">{status}</Badge>;
-    }
-  };
-
-  const getRatingStars = (rating) => {
-    return Array.from({ length: 5 }, (_, i) => (
-      <Star key={i} className={`h-4 w-4 ${i < rating ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}`} />
-    ));
   };
 
   if (loading) {
     return (
       <AdminLayout>
-        <div className="p-6 text-center text-muted-foreground">Loading suppliers...</div>
+        <div className="p-6 text-center text-muted-foreground">Loading providers...</div>
       </AdminLayout>
     );
   }
@@ -142,7 +155,7 @@ export function SuppliersPage() {
   if (error) {
     return (
       <AdminLayout>
-        <div className="p-6 text-center text-red-600">Error loading suppliers: {error.message}</div>
+        <div className="p-6 text-center text-red-600">Error loading providers: {error.message}</div>
       </AdminLayout>
     );
   }
@@ -150,117 +163,100 @@ export function SuppliersPage() {
   return (
     <AdminLayout>
       <div className="space-y-6">
-        {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-medium text-foreground">Suppliers Management</h1>
-            <p className="text-muted-foreground">Manage your supplier relationships and contact information</p>
+            <h1 className="text-2xl font-medium text-foreground">Providers Management</h1>
+            <p className="text-muted-foreground">Manage your provider relationships and contact information</p>
           </div>
           <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
             <DialogTrigger asChild>
               <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
                 <Plus className="mr-2 h-4 w-4" />
-                Add Supplier
+                Add Provider
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-2xl">
               <DialogHeader>
                 <DialogTitle>Add New Provider</DialogTitle>
               </DialogHeader>
-
               <div className="grid grid-cols-2 gap-4 py-4">
-                {/* Provider Name */}
                 <div className="space-y-2 col-span-2">
                   <Label htmlFor="providerName">Provider Name *</Label>
                   <Input
                     id="providerName"
                     value={newProvider.providerName}
-                    onChange={(e) =>
-                      setNewProvider({ ...newProvider, providerName: e.target.value })
-                    }
+                    onChange={(e) => setNewProvider({ ...newProvider, providerName: e.target.value })}
                     placeholder="Enter provider name"
                     required
                   />
                 </div>
 
-                {/* Provider Image URL */}
                 <div className="space-y-2 col-span-2">
-                  <Label htmlFor="providerImageUrl">Image URL</Label>
-                  <Input
-                    id="providerImageUrl"
-                    value={newProvider.providerImageUrl}
-                    onChange={(e) =>
-                      setNewProvider({ ...newProvider, providerImageUrl: e.target.value })
-                    }
-                    placeholder="https://example.com/logo.png"
-                  />
+                  <Label>Provider Image</Label>
+                  <div className="flex items-center gap-4">
+                    {newProvider.providerImageUrl ? (
+                      <img src={newProvider.providerImageUrl} alt="Provider Preview" className="h-20 w-20 rounded-md object-cover border" />
+                    ) : (
+                      <div className="h-20 w-20 rounded-md border bg-muted flex items-center justify-center">
+                        <ImageIcon className="h-8 w-8 text-muted-foreground" />
+                      </div>
+                    )}
+                    <div>
+                      <Button type="button" variant="outline" disabled={uploadingImage} onClick={() => addFileInputRef.current?.click()}>
+                        <UploadIcon className="mr-2 h-4 w-4" />
+                        {uploadingImage ? 'Uploading...' : 'Upload Image'}
+                      </Button>
+                      <input type="file" accept="image/*" className="hidden" ref={addFileInputRef} onChange={handleSelectFileForNewProvider} />
+                      {uploadError && <p className="text-sm text-red-500 mt-1">{uploadError}</p>}
+                    </div>
+                  </div>
                 </div>
 
-                {/* Provider Email */}
                 <div className="space-y-2">
                   <Label htmlFor="providerEmail">Email</Label>
                   <Input
                     id="providerEmail"
                     type="email"
                     value={newProvider.providerEmail}
-                    onChange={(e) =>
-                      setNewProvider({ ...newProvider, providerEmail: e.target.value })
-                    }
+                    onChange={(e) => setNewProvider({ ...newProvider, providerEmail: e.target.value })}
                     placeholder="provider@email.com"
                   />
                 </div>
-
-                {/* Provider Phone */}
                 <div className="space-y-2">
                   <Label htmlFor="providerPhone">Phone</Label>
                   <Input
                     id="providerPhone"
                     value={newProvider.providerPhone}
                     maxLength={12}
-                    onChange={(e) =>
-                      setNewProvider({ ...newProvider, providerPhone: e.target.value })
-                    }
+                    onChange={(e) => setNewProvider({ ...newProvider, providerPhone: e.target.value })}
                     placeholder="e.g. +123456789"
                   />
                 </div>
-
-                {/* Provider Address */}
                 <div className="space-y-2 col-span-2">
                   <Label htmlFor="providerAddress">Address</Label>
                   <Input
                     id="providerAddress"
                     value={newProvider.providerAddress}
-                    onChange={(e) =>
-                      setNewProvider({ ...newProvider, providerAddress: e.target.value })
-                    }
+                    onChange={(e) => setNewProvider({ ...newProvider, providerAddress: e.target.value })}
                     placeholder="123 Main St, City, Country"
                   />
                 </div>
               </div>
-
-              <div className="flex justify-end gap-3">
-                <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
-                  Cancel
-                </Button>
-                <Button
-                  onClick={handleAddSupplier}
-                  className="bg-primary text-primary-foreground hover:bg-primary/90"
-                >
-                  Add Provider
-                </Button>
-              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>Cancel</Button>
+                <Button onClick={handleAddProvider} className="bg-primary text-primary-foreground hover:bg-primary/90">Add Provider</Button>
+              </DialogFooter>
             </DialogContent>
           </Dialog>
         </div>
 
-        {/* Table */}
         <Card>
           <CardHeader>
-            <CardTitle>Suppliers ({filteredSuppliers.length})</CardTitle>
+            <CardTitle>Providers ({filteredProviders.length})</CardTitle>
           </CardHeader>
           <CardContent>
-            {filteredSuppliers.length === 0 ? (
-              <p className="text-center text-muted-foreground py-4">No suppliers found.</p>
+            {filteredProviders.length === 0 ? (
+              <p className="text-center text-muted-foreground py-4">No providers found.</p>
             ) : (
               <div className="overflow-x-auto">
                 <Table>
@@ -274,78 +270,158 @@ export function SuppliersPage() {
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
-
                   <TableBody>
-                    {paginatedSuppliers.length > 0 ? (
-                      paginatedSuppliers.map((provider) => (
-                        <TableRow key={provider.providerId}>
-                          <TableCell>
-                            {provider.providerImageUrl ? (
-                              <img
-                                src={provider.providerImageUrl}
-                                alt={provider.providerName}
-                                className="h-10 w-10 rounded-full object-cover border"
-                              />
-                            ) : (
-                              <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 text-sm font-medium">
-                                {provider.providerName?.[0]?.toUpperCase() || "?"}
-                              </div>
-                            )}
-                          </TableCell>
-
-                          <TableCell className="font-medium">{provider.providerName}</TableCell>
-                          <TableCell>{provider.providerEmail || '-'}</TableCell>
-                          <TableCell>{provider.providerPhone || '-'}</TableCell>
-                          <TableCell>{provider.providerAddress || '-'}</TableCell>
-
-                          <TableCell className="text-right">
-                            <div className="flex justify-end gap-2">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => {
-                                  setSelectedSupplier(provider);
-                                  setIsViewDialogOpen(true);
-                                }}
-                              >
-                                <Eye className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => {
-                                  setSelectedSupplier(provider);
-                                  setIsEditDialogOpen(true);
-                                }}
-                              >
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="text-destructive hover:text-destructive"
-                                onClick={() => handleDeleteSupplier(provider.providerId)}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
+                    {paginatedProviders.map((provider) => (
+                      <TableRow key={provider.providerId}>
+                        <TableCell>
+                          {provider.providerImageUrl ? (
+                            <img src={provider.providerImageUrl} alt={provider.providerName} className="h-10 w-10 rounded-full object-cover border" />
+                          ) : (
+                            <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 text-sm font-medium">
+                              {provider.providerName?.[0]?.toUpperCase() || "?"}
                             </div>
-                          </TableCell>
-                        </TableRow>
-                      ))
-                    ) : (
-                      <TableRow>
-                        <TableCell colSpan={6} className="text-center py-6 text-muted-foreground">
-                          No providers found.
+                          )}
+                        </TableCell>
+                        <TableCell className="font-medium">{provider.providerName}</TableCell>
+                        <TableCell>{provider.providerEmail || '-'}</TableCell>
+                        <TableCell>{provider.providerPhone || '-'}</TableCell>
+                        <TableCell>{provider.providerAddress || '-'}</TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                            <Button variant="ghost" size="sm" onClick={() => { setSelectedProvider(provider); setIsViewDialogOpen(true); }}>
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={() => { setSelectedProvider({ ...provider }); setIsEditDialogOpen(true); }}>
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => handleDeleteProvider(provider.providerId)}>
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
-                    )}
+                    ))}
                   </TableBody>
                 </Table>
               </div>
             )}
           </CardContent>
+          {totalPages > 1 && (
+            <CardFooter className="flex justify-end items-center gap-4">
+              <span className="text-sm text-muted-foreground">
+                Page {currentPage} of {totalPages}
+              </span>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))} disabled={currentPage === 1}>
+                  <ChevronLeft className="h-4 w-4" />
+                  Previous
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))} disabled={currentPage === totalPages}>
+                  Next
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </CardFooter>
+          )}
         </Card>
       </div>
+
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Edit Provider</DialogTitle>
+          </DialogHeader>
+          {selectedProvider && (
+            <>
+              <div className="grid grid-cols-2 gap-4 py-4">
+                <div className="space-y-2 col-span-2">
+                  <Label htmlFor="editProviderName">Provider Name *</Label>
+                  <Input id="editProviderName" value={selectedProvider.providerName} onChange={(e) => setSelectedProvider({ ...selectedProvider, providerName: e.target.value })} />
+                </div>
+                <div className="space-y-2 col-span-2">
+                  <Label>Provider Image</Label>
+                  <div className="flex items-center gap-4">
+                    {selectedProvider.providerImageUrl ? (
+                      <img src={selectedProvider.providerImageUrl} alt="Provider Preview" className="h-20 w-20 rounded-md object-cover border" />
+                    ) : (
+                      <div className="h-20 w-20 rounded-md border bg-muted flex items-center justify-center">
+                        <ImageIcon className="h-8 w-8 text-muted-foreground" />
+                      </div>
+                    )}
+                    <div>
+                      <Button type="button" variant="outline" disabled={uploadingImage} onClick={() => editFileInputRef.current?.click()}>
+                        <UploadIcon className="mr-2 h-4 w-4" />
+                        {uploadingImage ? 'Uploading...' : 'Upload Image'}
+                      </Button>
+                      <input type="file" accept="image/*" className="hidden" ref={editFileInputRef} onChange={handleSelectFileForSelectedProvider} />
+                      {uploadError && <p className="text-sm text-red-500 mt-1">{uploadError}</p>}
+                    </div>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="editProviderEmail">Email</Label>
+                  <Input id="editProviderEmail" type="email" value={selectedProvider.providerEmail} onChange={(e) => setSelectedProvider({ ...selectedProvider, providerEmail: e.target.value })} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="editProviderPhone">Phone</Label>
+                  <Input id="editProviderPhone" value={selectedProvider.providerPhone} onChange={(e) => setSelectedProvider({ ...selectedProvider, providerPhone: e.target.value })} />
+                </div>
+                <div className="space-y-2 col-span-2">
+                  <Label htmlFor="editProviderAddress">Address</Label>
+                  <Input id="editProviderAddress" value={selectedProvider.providerAddress} onChange={(e) => setSelectedProvider({ ...selectedProvider, providerAddress: e.target.value })} />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>Cancel</Button>
+                <Button onClick={handleEditProvider}>Save Changes</Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Provider Details</DialogTitle>
+          </DialogHeader>
+          {selectedProvider && (
+            <div className="space-y-4 pt-4">
+              <div className="flex items-center gap-4">
+                {selectedProvider.providerImageUrl ? (
+                  <img src={selectedProvider.providerImageUrl} alt={selectedProvider.providerName} className="h-20 w-20 rounded-full object-cover border-2" />
+                ) : (
+                  <div className="h-20 w-20 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 text-2xl font-medium">
+                    {selectedProvider.providerName?.[0]?.toUpperCase() || "?"}
+                  </div>
+                )}
+                <div>
+                  <h2 className="text-xl font-semibold">{selectedProvider.providerName}</h2>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                <div>
+                  <p className="font-medium text-muted-foreground">Email</p>
+                  <p>{selectedProvider.providerEmail || 'N/A'}</p>
+                </div>
+                <div>
+                  <p className="font-medium text-muted-foreground">Phone</p>
+                  <p>{selectedProvider.providerPhone || 'N/A'}</p>
+                </div>
+                <div className="col-span-2">
+                  <p className="font-medium text-muted-foreground">Address</p>
+                  <p>{selectedProvider.providerAddress || 'N/A'}</p>
+                </div>
+              </div>
+            </div>
+          )}
+           <DialogFooter>
+                <DialogClose asChild>
+                    <Button variant="outline">Close</Button>
+                </DialogClose>
+            </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AdminLayout>
   );
 }

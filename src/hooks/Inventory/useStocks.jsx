@@ -1,4 +1,3 @@
-// src/hooks/useStocks.jsx
 import { useState, useEffect, useCallback } from "react";
 import stockService from "../../services/stockService";
 
@@ -7,7 +6,6 @@ export default function useStocks() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
 
-    // Fetch all stocks
     const fetchStocks = useCallback(async () => {
         setLoading(true);
         setError(null);
@@ -22,7 +20,6 @@ export default function useStocks() {
         }
     }, []);
 
-    // Create a new stock
     const createStock = useCallback(async (stockDto) => {
         try {
             const created = await stockService.createStock(stockDto);
@@ -34,12 +31,11 @@ export default function useStocks() {
         }
     }, []);
 
-    // Update existing stock
     const updateStock = useCallback(async (id, updateStockDto) => {
         try {
             const success = await stockService.updateStock(id, updateStockDto);
             if (success) {
-                await fetchStocks(); // refresh list after update
+                await fetchStocks();
             }
             return success;
         } catch (err) {
@@ -48,7 +44,6 @@ export default function useStocks() {
         }
     }, [fetchStocks]);
 
-    // Delete stock
     const deleteStock = useCallback(async (id) => {
         try {
             const success = await stockService.deleteStock(id);
@@ -62,7 +57,6 @@ export default function useStocks() {
         }
     }, []);
 
-    // Initial fetch on mount
     useEffect(() => {
         fetchStocks();
     }, [fetchStocks]);

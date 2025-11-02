@@ -1,10 +1,10 @@
 import React from 'react';
 import { AdminLayout } from '../components/AdminLayout';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/card';
+import { Card, CardContent } from '../../components/ui/card';
 import { Input } from '../../components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
 import { Badge } from '../../components/ui/badge';
-import { Search, Loader2, ArrowRight, ArrowLeft, User, Building, Truck, ShoppingCart } from 'lucide-react';
+import { Search, Loader2, ArrowRight, ArrowLeft, User, Building, Truck } from 'lucide-react';
 import { useTransactions } from '../../hooks/Inventory/useTransaction';
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '../../components/ui/pagination';
 import { ImageWithFallback } from '../../components/figma/ImageWithFallback';
@@ -25,7 +25,10 @@ export default function TransactionsPage() {
         currentPage,
         setCurrentPage,
         handleFilterChange,
-    } = useTransactions();
+    } = useTransactions({
+        dateFilter: 'all',
+        sort: 'newest_first'
+    });
     
     const totalPages = Math.ceil(pagination.totalCount / pagination.pageSize);
 
@@ -91,7 +94,7 @@ export default function TransactionsPage() {
                                     <div>
                                         <p className="font-bold">{t.productName}</p>
                                         <p className="text-sm text-muted-foreground">{t.colorName}, {t.sizeName}</p>
-                                        <p className="text-sm">{formatVND(t.transactionProductPrice)}</p>
+                                        <p className="text-sm">{t.transactionProductPrice ? formatVND(t.transactionProductPrice) : 'N/A'}</p>
                                     </div>
                                 </div>
                                 <div className="space-y-2 text-sm">
