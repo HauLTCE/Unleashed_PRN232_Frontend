@@ -18,12 +18,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from '../../components/ui/select';
-import { X, Plus } from 'lucide-react';
+import { X, Plus, Upload as UploadIcon, Image as ImageIcon } from 'lucide-react';
 
 import { useBrands } from '@/hooks/useBrands';
 import { useCategories } from '@/hooks/useCategories';
 import { useVariationOptions } from '@/hooks/useVariationOptions';
 import { createProduct } from '@/services/ProductsService';
+
+// hook upload ảnh (giống AccountPage xài)
+import { useImageUpload } from '@/hooks/useImageUpload';
 
 export function ProductCreatePage() {
   const navigate = useNavigate();
@@ -32,6 +35,13 @@ export function ProductCreatePage() {
   const { brands } = useBrands();
   const { categories } = useCategories();
   const { sizes, colors, productStatuses } = useVariationOptions();
+
+  // hook upload ảnh dùng chung
+  const {
+    uploadFile,
+    loading: uploadingImage,
+    error: uploadError,
+  } = useImageUpload();
 
   // form state cho product
   const [newProduct, setNewProduct] = React.useState({
@@ -53,9 +63,13 @@ export function ProductCreatePage() {
     }),
     []
   );
+
   const [variations, setVariations] = React.useState([{ ...emptyVariation }]);
 
-  // handlers variations
+  // ref để click input file ẩn cho từng variation
+  const fileInputsRef = React.useRef({});
+
+  // cập nhật field cho 1 variation
   const updateVariationField = (i, field, value) => {
     setVariations((prev) => {
       const clone = [...prev];
@@ -64,24 +78,46 @@ export function ProductCreatePage() {
     });
   };
 
+  // thêm 1 variation mới
   const addVariation = () => {
     setVariations((prev) => [...prev, { ...emptyVariation }]);
   };
 
+  // xoá variation
   const removeVariation = (i) => {
     setVariations((prev) => {
-      if (prev.length === 1) return prev;
+      if (prev.length === 1) return prev; // giữ ít nhất 1 variation
       const clone = [...prev];
       clone.splice(i, 1);
       return clone;
     });
   };
 
-  const handleVariationImageChange = (i, value) => {
-    updateVariationField(i, 'variationImage', value);
+  // mở hộp chọn file cho variation i
+  const triggerFileSelect = (i) => {
+    const inputEl = fileInputsRef.current[i];
+    if (inputEl) {
+      inputEl.click();
+    }
   };
 
-  // submit
+  // khi user chọn file -> upload -> nhận link -> gán vào variationImage
+  const handleSelectFile = (i, e) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+
+    // giống AccountPage: uploadFile(file).then(...)
+    uploadFile(file).then((res) => {
+      if (res && res.imageUrl) {
+        updateVariationField(i, 'variationImage', res.imageUrl);
+      }
+    });
+
+    // reset input để lần sau chọn lại cùng file tên giống vẫn chạy onChange
+    e.target.value = '';
+  };
+
+  // submit tạo product
   const handleCreate = async () => {
     try {
       const payload = {
@@ -89,7 +125,7 @@ export function ProductCreatePage() {
         productCode: newProduct.productCode || null,
         productDescription: newProduct.productDescription || null,
 
-        // nếu chưa chọn thì để null thay vì 0 để BE đỡ nổi giận
+        // nếu chưa chọn thì null thay vì 0
         brandId: newProduct.brandId ? Number(newProduct.brandId) : null,
         productStatusId: newProduct.productStatusId
           ? Number(newProduct.productStatusId)
@@ -111,7 +147,7 @@ export function ProductCreatePage() {
       };
 
       await createProduct(payload);
-      navigate('/admin/products'); // quay lại list
+      navigate('/admin/products');
     } catch (err) {
       console.error('Failed to create product:', err);
       alert('Failed to create product');
@@ -278,6 +314,7 @@ export function ProductCreatePage() {
                     key={i}
                     className="border rounded-md p-4 relative bg-muted/10"
                   >
+                    {/* nút xóa variation */}
                     <button
                       type="button"
                       className="absolute top-2 right-2 text-muted-foreground hover:text-destructive"
@@ -288,6 +325,7 @@ export function ProductCreatePage() {
                     </button>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* Size */}
                       <div>
                         <Label>Size</Label>
                         <Select
@@ -314,6 +352,7 @@ export function ProductCreatePage() {
                         </Select>
                       </div>
 
+                      {/* Color */}
                       <div>
                         <Label>Color</Label>
                         <Select
@@ -340,6 +379,7 @@ export function ProductCreatePage() {
                         </Select>
                       </div>
 
+                      {/* Price */}
                       <div>
                         <Label>Price</Label>
                         <Input
@@ -348,16 +388,17 @@ export function ProductCreatePage() {
                           value={v.variationPrice}
                           onChange={(e) => {
                             const val = e.target.value;
-                            // chặn nhập âm
-                            if (Number(val) < 0) return;
+                            if (Number(val) < 0) return; // chặn âm
                             updateVariationField(i, 'variationPrice', val);
                           }}
                         />
                       </div>
 
+                      {/* Image upload + preview */}
                       <div className="flex flex-col gap-2">
-                        <Label>Image URL</Label>
+                        <Label>Image</Label>
 
+                        {/* Preview */}
                         {v.variationImage ? (
                           <img
                             src={v.variationImage}
@@ -365,19 +406,41 @@ export function ProductCreatePage() {
                             className="h-16 w-16 rounded-md object-cover border"
                           />
                         ) : (
-                          <div className="h-16 w-16 rounded-md border bg-muted flex items-center justify-center text-xs text-muted-foreground">
+                          <div className="h-16 w-16 rounded-md border bg-muted flex items-center justify-center text-xs text-muted-foreground text-center p-1">
+                            <ImageIcon className="h-4 w-4 mr-1" />
                             No image
                           </div>
                         )}
 
-                        <Input
-                          type="text"
-                          placeholder="Enter image URL"
-                          value={v.variationImage || ''}
-                          onChange={(e) => {
-                            const value = e.target.value;
-                            handleVariationImageChange(i, value);
+                        {/* Nút upload file giống AccountPage avatar */}
+                        <div className="flex items-center gap-2">
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            disabled={uploadingImage}
+                            onClick={() => triggerFileSelect(i)}
+                          >
+                            <UploadIcon className="h-4 w-4 mr-1" />
+                            {uploadingImage ? 'Uploading...' : 'Upload Image'}
+                          </Button>
+
+                          {uploadError && (
+                            <span className="text-xs text-red-500">
+                              {uploadError}
+                            </span>
+                          )}
+                        </div>
+
+                        {/* input file ẩn cho từng variation */}
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          ref={(el) => {
+                            fileInputsRef.current[i] = el;
                           }}
+                          onChange={(e) => handleSelectFile(i, e)}
                         />
                       </div>
                     </div>
@@ -391,6 +454,7 @@ export function ProductCreatePage() {
               <Button
                 className="w-full"
                 onClick={handleCreate}
+                disabled={uploadingImage}
               >
                 Create Product
               </Button>
