@@ -1,7 +1,7 @@
 
-import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react-swc';
 import path from 'path';
+import { defineConfig } from 'vite';
 
 export default defineConfig({
   plugins: [react()],
@@ -78,49 +78,49 @@ export default defineConfig({
       },
       // ===== Product service (https://localhost:60448) =====
       '/api/Products': {
-        target: 'https://localhost:60448',
+        target: 'https://localhost:7276',
         //target: 'https://localhost:55962',
         secure: false,
         changeOrigin: true,
       },
       '/api/Categories': {
-        target: 'https://localhost:60448',
+        target: 'https://localhost:7276',
         //target: 'https://localhost:55962',
         secure: false,
         changeOrigin: true,
       },
       '/api/Brands': {
-        target: 'https://localhost:60448',
+        target: 'https://localhost:7276',
         //target: 'https://localhost:55962',
         secure: false,
         changeOrigin: true,
       },
       '/api/Variations': {
-        target: 'https://localhost:60448',
+        target: 'https://localhost:7276',
         //target: 'https://localhost:55962',
         secure: false,
         changeOrigin: true,
       },
-       '/api/Sizes': {
-        target: 'https://localhost:60448',
+      '/api/Sizes': {
+        target: 'https://localhost:7276',
         //target: 'https://localhost:55962',
         secure: false,
         changeOrigin: true,
       },
-        '/api/Colors': {
-        target: 'https://localhost:60448',
+      '/api/Colors': {
+        target: 'https://localhost:7276',
         //target: 'https://localhost:55962',
         secure: false,
         changeOrigin: true,
       },
-        '/api/ProductStatus': {
-        target: 'https://localhost:60448',
+      '/api/ProductStatus': {
+        target: 'https://localhost:7276',
         //target: 'https://localhost:55962',
         secure: false,
         changeOrigin: true,
       },
       '/api/Filters': {
-        target: 'https://localhost:60448',
+        target: 'https://localhost:7276',
         //target: 'https://localhost:55962',
         secure: false,
         changeOrigin: true,
@@ -178,8 +178,13 @@ export default defineConfig({
         secure: false,
         changeOrigin: true,
       },
-      '/api/comments': {
+      '/api/Comments': {
         target: 'https://localhost:7164',
+        secure: false,
+        changeOrigin: true,
+      },
+      '/api/cart': {
+        target: 'https://localhost:7287',
         secure: false,
         changeOrigin: true,
       },

@@ -1,11 +1,11 @@
 // src/pages/Homepage.jsx
-import React, { useEffect, useMemo, useState } from 'react';
+import { ArrowRight, Star } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { ImageWithFallback } from '../components/figma/ImageWithFallback';
+import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { Card, CardContent } from '../components/ui/card';
-import { Badge } from '../components/ui/badge';
-import { ImageWithFallback } from '../components/figma/ImageWithFallback';
-import { Star, ArrowRight } from 'lucide-react';
 import { useApp } from '../contexts/AppContext';
 
 // Real API

@@ -1,17 +1,18 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import { Filter, Heart, Search, ShoppingCart, Star } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Button } from '../components/ui/button';
-import { Input } from '../components/ui/input';
-import { Card, CardContent } from '../components/ui/card';
-import { Badge } from '../components/ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
-import { Checkbox } from '../components/ui/checkbox';
 import { ImageWithFallback } from '../components/figma/ImageWithFallback';
-import { Star, Search, Filter, Heart, ShoppingCart } from 'lucide-react';
+import { Badge } from '../components/ui/badge';
+import { Button } from '../components/ui/button';
+import { Card, CardContent } from '../components/ui/card';
+import { Checkbox } from '../components/ui/checkbox';
+import { Input } from '../components/ui/input';
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '../components/ui/pagination';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { useApp } from '../contexts/AppContext';
 
 // 🧠 Dữ liệu thật (server-side, không dùng react-query)
+import { useCart } from '@/hooks/useCart';
 import { usePagedProducts } from '@/hooks/usePagedProducts';
 
 // ---- Helpers kiểu dữ liệu (khớp với types.ts của Sếp) ----
@@ -67,8 +68,8 @@ function getCategoryNames(p: ProductDetailDTO): string[] {
 }
 
 export function ShopPage() {
-  const { addToCart, addToWishlist, removeFromWishlist, isInWishlist } = useApp();
-
+  const { addToWishlist, removeFromWishlist, isInWishlist } = useApp();
+  const { addItemToCart } = useCart();
   // ── State: search / category(multi) / sort
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<number[]>([]); // [] = All
@@ -383,11 +384,10 @@ export function ShopPage() {
                           {[...Array(5)].map((_, i) => (
                             <Star
                               key={i}
-                              className={`h-4 w-4 ${
-                                i < Math.floor(rating)
-                                  ? 'fill-yellow-400 text-yellow-400'
-                                  : 'text-gray-300'
-                              }`}
+                              className={`h-4 w-4 ${i < Math.floor(rating)
+                                ? 'fill-yellow-400 text-yellow-400'
+                                : 'text-gray-300'
+                                }`}
                             />
                           ))}
                         </div>
@@ -409,9 +409,13 @@ export function ShopPage() {
                         </div>
                         <Button
                           size="sm"
-                          onClick={() => addToCart(product.productId)}
+                          onClick={() => {
+                            const firstVar = product.variations?.[0];
+                            if (firstVar?.variationId) addItemToCart(firstVar.variationId, 1);
+                            else console.warn("No variation available for product", product.productId);
+                          }}
                           className="opacity-0 group-hover:opacity-100 transition-opacity"
-                          disabled={price == null}
+                          disabled={!product.variations?.length}
                         >
                           <ShoppingCart className="h-4 w-4" />
                         </Button>
