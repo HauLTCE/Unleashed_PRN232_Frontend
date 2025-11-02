@@ -18,7 +18,6 @@ import { CreateEmployeePage } from '../admin/pages/CreateEmployeePage';
 import { NotificationDetailPage } from '../admin/pages/NotificationDetailPage';
 import { CreateNotificationPage } from '../admin/pages/CreateNotificationPage';
 import { OrdersPage } from '../admin/pages/OrdersPage';
-import { OrderDetailPage } from '../admin/pages/OrderDetailPage';
 import { DiscountsPage } from '../admin/pages/DiscountsPage';
 import StockPage from '../admin/pages/StockPage';
 import { CustomersPage } from '../admin/pages/CustomersPage';
@@ -30,7 +29,8 @@ import TransactionsPage from '../admin/pages/TransactionsPage';
 import { BrandsPage } from '../admin/pages/BrandsPage';
 import { CategoriesPage } from '../admin/pages/CategoriesPage';
 import { ProductCreatePage } from '../admin/pages/ProductCreatePage';
-import { ProductEditPage  } from '../admin/pages/ProductEditPage';
+import { ProductEditPage } from '../admin/pages/ProductEditPage';
+import OrderDetailPage from '../admin/pages/OrderDetailPage';
 
 const AdminLayout = () => {
 
