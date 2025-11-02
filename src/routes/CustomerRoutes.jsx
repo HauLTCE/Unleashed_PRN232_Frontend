@@ -1,24 +1,11 @@
 import { Outlet, Route } from 'react-router-dom';
 
-import { Header } from '../components/Header';
 import { Footer } from '../components/Footer';
 import { Header } from '../components/Header';
 
 // Pages
-import { Homepage } from '../pages/Homepage';
-import { LoginPage } from '../pages/LoginPage';
-import { SignupPage } from '../pages/SignupPage';
-import { ForgotPasswordPage } from '../pages/ForgotPasswordPage';
-import { ConfirmEmailPage } from '../pages/ConfirmEmailPage';
-import { ResetPasswordPage } from '../pages/ResetPasswordPage';
-import { ShopPage } from '../pages/ShopPage';
-import { ProductDetailPage } from '../pages/ProductDetailPage';
-import { ShopPage } from '../pages/ShopPage';
-import { SignupPage } from '../pages/SignupPage';
-
 import { AboutPage } from '../pages/AboutPage';
 import { AccountPage } from '../pages/AccountPage';
-
 import { CartPage } from '../pages/CartPage';
 import { CheckoutFailedPage } from '../pages/CheckoutFailedPage';
 import { CheckoutPage } from '../pages/CheckoutPage';
@@ -27,6 +14,16 @@ import { CheckoutSuccessPage } from '../pages/CheckoutSuccessPage';
 import { ConfirmEmailPage } from '../pages/ConfirmEmailPage';
 import { ContactPage } from '../pages/ContactPage';
 import { ForbiddenPage } from '../pages/ForbiddenPage';
+import { ForgotPasswordPage } from '../pages/ForgotPasswordPage';
+import { Homepage } from '../pages/Homepage';
+import { LoginPage } from '../pages/LoginPage';
+import { NotFoundPage } from '../pages/NotFoundPage';
+import { ProductDetailPage } from '../pages/ProductDetailPage';
+import { ResetPasswordPage } from '../pages/ResetPasswordPage';
+import { ServerErrorPage } from '../pages/ServerErrorPage';
+import { ShopPage } from '../pages/ShopPage';
+import { SignupPage } from '../pages/SignupPage';
+import { WishlistPage } from '../pages/WishlistPage';
 
 import { ProtectedRoute } from './ProtectedRoute';
 
