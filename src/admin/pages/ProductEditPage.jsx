@@ -22,7 +22,7 @@ import {
   SelectValue,
 } from '../../components/ui/select';
 
-import { X, Plus } from 'lucide-react';
+import { X, Plus, Upload as UploadIcon, Image as ImageIcon } from 'lucide-react';
 
 import { useProduct } from '@/hooks/useProduct';
 import { useBrands } from '@/hooks/useBrands';
@@ -30,15 +30,20 @@ import { useCategories } from '@/hooks/useCategories';
 import { useVariationOptions } from '@/hooks/useVariationOptions';
 import { updateProduct } from '@/services/ProductsService';
 
+// 👇 thêm hook upload ảnh giống CreatePage
+import { useImageUpload } from '@/hooks/useImageUpload';
+
 export function ProductEditPage() {
   const { id: productId } = useParams();
   const navigate = useNavigate();
 
+  // master data
   const { product, loading, error, refetch } = useProduct(productId);
   const { brands } = useBrands();
   const { categories } = useCategories();
   const { sizes, colors, productStatuses } = useVariationOptions();
 
+  // trạng thái form chung
   const [form, setForm] = React.useState({
     productName: '',
     productCode: '',
@@ -48,6 +53,7 @@ export function ProductEditPage() {
     productStatusId: '',
   });
 
+  // cấu trúc 1 variation
   const emptyVariation = React.useMemo(
     () => ({
       variationId: 0,
@@ -59,8 +65,20 @@ export function ProductEditPage() {
     []
   );
 
+  // list variations để edit
   const [editVariations, setEditVariations] = React.useState([]);
 
+  // ref để click input file ẩn theo index variation
+  const fileInputsRef = React.useRef({});
+
+  // hook upload ảnh dùng lại từ AccountPage/CreatePage
+  const {
+    uploadFile,
+    loading: uploadingImage,
+    error: uploadError,
+  } = useImageUpload();
+
+  // đổ data sản phẩm ban đầu vào form và variations
   React.useEffect(() => {
     if (!product) return;
 
@@ -97,10 +115,12 @@ export function ProductEditPage() {
     );
   }, [product, emptyVariation]);
 
+  // đổi field trong form chung
   const handleFieldChange = (field, value) => {
     setForm((prev) => ({ ...prev, [field]: value }));
   };
 
+  // đổi field trong từng variation
   const updateVariationField = (i, field, value) => {
     setEditVariations((prev) => {
       const clone = [...prev];
@@ -109,10 +129,12 @@ export function ProductEditPage() {
     });
   };
 
+  // thêm variation mới
   const addVariation = () => {
     setEditVariations((prev) => [...prev, { ...emptyVariation }]);
   };
 
+  // xóa variation (trừ khi chỉ còn 1)
   const removeVariation = (i) => {
     setEditVariations((prev) => {
       if (prev.length === 1) return prev;
@@ -122,10 +144,30 @@ export function ProductEditPage() {
     });
   };
 
-  const handleVariationImageChange = (i, value) => {
-    updateVariationField(i, 'variationImage', value);
+  // mở file picker cho variation i
+  const triggerFileSelect = (i) => {
+    const inputEl = fileInputsRef.current[i];
+    if (inputEl) {
+      inputEl.click();
+    }
   };
 
+  // khi chọn file: upload -> nhận link -> set vào variationImage
+  const handleSelectFile = (i, e) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+
+    uploadFile(file).then((res) => {
+      if (res && res.imageUrl) {
+        updateVariationField(i, 'variationImage', res.imageUrl);
+      }
+    });
+
+    // reset input để lần sau chọn cùng tên file vẫn trigger
+    e.target.value = '';
+  };
+
+  // lưu thay đổi
   const handleSave = async () => {
     try {
       const payload = {
@@ -160,7 +202,7 @@ export function ProductEditPage() {
       console.log('UPDATE PAYLOAD >>>', payload);
 
       await updateProduct(productId, payload);
-      await refetch(); // làm mới data local (optional)
+      await refetch(); // refresh local cache nếu cần
       navigate('/admin/products');
     } catch (err) {
       console.error('Failed to update product:', err);
@@ -168,6 +210,7 @@ export function ProductEditPage() {
     }
   };
 
+  // các trạng thái tải
   if (loading) {
     return (
       <AdminLayout>
@@ -316,6 +359,7 @@ export function ProductEditPage() {
                 <div className="font-semibold text-sm text-muted-foreground">
                   Variations
                 </div>
+
                 <Button
                   type="button"
                   size="sm"
@@ -333,6 +377,7 @@ export function ProductEditPage() {
                     key={i}
                     className="border rounded-md p-4 relative bg-muted/10"
                   >
+                    {/* nút xóa variation */}
                     <button
                       type="button"
                       className="absolute top-2 right-2 text-muted-foreground hover:text-destructive"
@@ -343,6 +388,7 @@ export function ProductEditPage() {
                     </button>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* Size */}
                       <div>
                         <Label>Size</Label>
                         <Select
@@ -369,6 +415,7 @@ export function ProductEditPage() {
                         </Select>
                       </div>
 
+                      {/* Color */}
                       <div>
                         <Label>Color</Label>
                         <Select
@@ -395,6 +442,7 @@ export function ProductEditPage() {
                         </Select>
                       </div>
 
+                      {/* Price */}
                       <div>
                         <Label>Price</Label>
                         <Input
@@ -403,19 +451,17 @@ export function ProductEditPage() {
                           value={v.variationPrice}
                           onChange={(e) => {
                             const val = e.target.value;
-                            if (Number(val) < 0) return; // chặn số âm
-                            updateVariationField(
-                              i,
-                              'variationPrice',
-                              val
-                            );
+                            if (Number(val) < 0) return; // chặn âm
+                            updateVariationField(i, 'variationPrice', val);
                           }}
                         />
                       </div>
 
+                      {/* Image upload + preview */}
                       <div className="flex flex-col gap-2">
-                        <Label>Image URL</Label>
+                        <Label>Image</Label>
 
+                        {/* preview ảnh */}
                         {v.variationImage ? (
                           <img
                             src={v.variationImage}
@@ -423,18 +469,41 @@ export function ProductEditPage() {
                             className="h-16 w-16 rounded-md object-cover border"
                           />
                         ) : (
-                          <div className="h-16 w-16 rounded-md border bg-muted flex items-center justify-center text-xs text-muted-foreground">
+                          <div className="h-16 w-16 rounded-md border bg-muted flex items-center justify-center text-xs text-muted-foreground text-center p-1">
+                            <ImageIcon className="h-4 w-4 mr-1" />
                             No image
                           </div>
                         )}
 
-                        <Input
-                          type="text"
-                          placeholder="Enter image URL"
-                          value={v.variationImage || ''}
-                          onChange={(e) =>
-                            handleVariationImageChange(i, e.target.value)
-                          }
+                        {/* nút upload ảnh */}
+                        <div className="flex items-center gap-2">
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            disabled={uploadingImage}
+                            onClick={() => triggerFileSelect(i)}
+                          >
+                            <UploadIcon className="h-4 w-4 mr-1" />
+                            {uploadingImage ? 'Uploading...' : 'Upload Image'}
+                          </Button>
+
+                          {uploadError && (
+                            <span className="text-xs text-red-500">
+                              {uploadError}
+                            </span>
+                          )}
+                        </div>
+
+                        {/* input file ẩn để chọn ảnh cho variation i */}
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          ref={(el) => {
+                            fileInputsRef.current[i] = el;
+                          }}
+                          onChange={(e) => handleSelectFile(i, e)}
                         />
                       </div>
                     </div>
@@ -445,7 +514,11 @@ export function ProductEditPage() {
 
             {/* FOOTER ACTIONS */}
             <section className="flex gap-4">
-              <Button className="w-full" onClick={handleSave}>
+              <Button
+                className="w-full"
+                onClick={handleSave}
+                disabled={uploadingImage}
+              >
                 Save Changes
               </Button>
 
