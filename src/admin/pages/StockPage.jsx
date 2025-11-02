@@ -1,44 +1,67 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { AdminLayout } from '../components/AdminLayout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../../components/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogClose
+} from '../../components/ui/dialog';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
-import { Warehouse, Plus, MoreVertical, Edit, Trash2, ArrowRight } from 'lucide-react';
+import { Warehouse, Plus, Edit, Trash2, Eye } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import useStocks from '../../hooks/Inventory/useStocks';
 import { toast } from 'sonner';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../../components/ui/dropdown-menu';
 
 export default function StockPage() {
   const { stocks, loading, error, createStock, updateStock, deleteStock } = useStocks();
   const navigate = useNavigate();
 
-  const [isDialogOpen, setIsDialogOpen] = React.useState(false);
-  const [isEdit, setIsEdit] = React.useState(false);
-  const [currentStock, setCurrentStock] = React.useState({ stockId: null, stockName: '', stockAddress: '' });
+  const [isEdit, setIsEdit] = useState(false);
+  const [selectedStock, setSelectedStock] = useState(null);
 
-  const openNewDialog = () => {
+  const [isFormDialogOpen, setIsFormDialogOpen] = useState(false);
+  const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+
+  const emptyStock = { stockId: null, stockName: '', stockAddress: '' };
+
+  const handleOpenNew = () => {
     setIsEdit(false);
-    setCurrentStock({ stockId: null, stockName: '', stockAddress: '' });
-    setIsDialogOpen(true);
+    setSelectedStock(emptyStock);
+    setIsFormDialogOpen(true);
   };
 
-  const openEditDialog = (stock) => {
+  const handleOpenEdit = (stock) => {
     setIsEdit(true);
-    setCurrentStock(stock);
-    setIsDialogOpen(true);
+    setSelectedStock({ ...stock });
+    setIsFormDialogOpen(true);
   };
 
-  const handleDelete = async (id) => {
-    if (window.confirm('Are you sure you want to delete this warehouse?')) {
-      try {
-        await deleteStock(id);
-        toast.success('Warehouse deleted successfully.');
-      } catch (err) {
-        toast.error('Failed to delete warehouse.');
-      }
+  const handleOpenView = (stock) => {
+    setSelectedStock(stock);
+    setIsViewDialogOpen(true);
+  };
+
+  const handleOpenDelete = (stock) => {
+    setSelectedStock(stock);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!selectedStock) return;
+    try {
+      await deleteStock(selectedStock.stockId);
+      toast.success('Warehouse deleted successfully.');
+      setIsDeleteDialogOpen(false);
+      setSelectedStock(null);
+    } catch (err) {
+      toast.error('Failed to delete warehouse.');
     }
   };
 
@@ -46,17 +69,23 @@ export default function StockPage() {
     e.preventDefault();
     try {
       if (isEdit) {
-        await updateStock(currentStock.stockId, currentStock);
+        await updateStock(selectedStock.stockId, selectedStock);
         toast.success('Warehouse updated successfully.');
       } else {
-        await createStock(currentStock);
+        await createStock(selectedStock);
         toast.success('Warehouse created successfully.');
       }
-      setIsDialogOpen(false);
+      setIsFormDialogOpen(false);
+      setSelectedStock(null);
     } catch (err) {
       toast.error(`Failed to ${isEdit ? 'update' : 'create'} warehouse.`);
     }
   };
+
+  const handleFormDialogChange = (open) => {
+    if (!open) setSelectedStock(null);
+    setIsFormDialogOpen(open);
+  }
 
   if (loading) return <AdminLayout><p>Loading warehouses...</p></AdminLayout>;
   if (error) return <AdminLayout><p className="text-destructive">Error loading warehouses.</p></AdminLayout>;
@@ -69,7 +98,7 @@ export default function StockPage() {
             <h1 className="text-3xl font-bold">Warehouse Management</h1>
             <p className="text-muted-foreground">Manage all your inventory locations.</p>
           </div>
-          <Button onClick={openNewDialog}>
+          <Button onClick={handleOpenNew}>
             <Plus className="mr-2 h-4 w-4" /> Add Warehouse
           </Button>
         </div>
@@ -78,41 +107,74 @@ export default function StockPage() {
           {stocks.map((stock) => (
             <Card key={stock.stockId}>
               <CardHeader>
-                <div className="flex justify-between items-start">
-                  <div>
-                    <CardTitle className="flex items-center gap-2">
-                      <Warehouse className="h-5 w-5" />
-                      {stock.stockName}
-                    </CardTitle>
-                    <CardDescription>{stock.stockAddress || 'No address specified'}</CardDescription>
-                  </div>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                        <MoreVertical className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => openEditDialog(stock)}>
-                        <Edit className="mr-2 h-4 w-4" /> Edit
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => handleDelete(stock.stockId)} className="text-destructive">
-                        <Trash2 className="mr-2 h-4 w-4" /> Delete
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
+                <CardTitle className="flex items-center gap-2">
+                  <Warehouse className="h-5 w-5" />
+                  {stock.stockName}
+                </CardTitle>
+                <CardDescription>{stock.stockAddress || 'No address specified'}</CardDescription>
               </CardHeader>
-              <CardContent>
-                <Button variant="outline" className="w-full" onClick={() => navigate(`/admin/stock/${stock.stockId}`)}>
-                  View Inventory <ArrowRight className="ml-2 h-4 w-4" />
+              <CardContent className="space-y-2">
+                <Button 
+                  variant="outline" 
+                  className="w-full" 
+                  onClick={() => navigate(`/admin/stock/${stock.stockId}`)}
+                >
+                  View Inventory
                 </Button>
+                <div className="flex gap-2">
+                  <Button 
+                    variant="secondary" 
+                    size="sm" 
+                    className="flex-1"
+                    onClick={() => handleOpenView(stock)}
+                  >
+                    <Eye className="mr-2 h-4 w-4" /> View
+                  </Button>
+                  <Button 
+                    variant="secondary" 
+                    size="sm" 
+                    className="flex-1"
+                    onClick={() => handleOpenEdit(stock)}
+                  >
+                    <Edit className="mr-2 h-4 w-4" /> Edit
+                  </Button>
+                  <Button 
+                    variant="destructive" 
+                    size="sm" 
+                    className="flex-1"
+                    onClick={() => handleOpenDelete(stock)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           ))}
         </div>
 
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>{selectedStock?.stockName}</DialogTitle>
+              <DialogDescription>Details for this warehouse location.</DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label className="text-right">Name</Label>
+                <p className="col-span-3">{selectedStock?.stockName}</p>
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label className="text-right">Address</Label>
+                <p className="col-span-3">{selectedStock?.stockAddress || 'N/A'}</p>
+              </div>
+            </div>
+            <DialogFooter>
+                <Button variant="outline" onClick={() => setIsViewDialogOpen(false)}>Close</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+        
+        <Dialog open={isFormDialogOpen} onOpenChange={handleFormDialogChange}>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>{isEdit ? 'Edit Warehouse' : 'Add New Warehouse'}</DialogTitle>
@@ -122,8 +184,8 @@ export default function StockPage() {
                 <Label htmlFor="stockName">Warehouse Name</Label>
                 <Input
                   id="stockName"
-                  value={currentStock.stockName}
-                  onChange={(e) => setCurrentStock({ ...currentStock, stockName: e.target.value })}
+                  value={selectedStock?.stockName || ''}
+                  onChange={(e) => setSelectedStock({ ...selectedStock, stockName: e.target.value })}
                   required
                 />
               </div>
@@ -131,16 +193,35 @@ export default function StockPage() {
                 <Label htmlFor="stockAddress">Address</Label>
                 <Input
                   id="stockAddress"
-                  value={currentStock.stockAddress}
-                  onChange={(e) => setCurrentStock({ ...currentStock, stockAddress: e.target.value })}
+                  value={selectedStock?.stockAddress || ''}
+                  onChange={(e) => setSelectedStock({ ...selectedStock, stockAddress: e.target.value })}
                 />
               </div>
               <div className="flex justify-end gap-2 pt-2">
-                <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
+                <DialogClose asChild>
+                    <Button type="button" variant="outline">Cancel</Button>
+                </DialogClose>
                 <Button type="submit">{isEdit ? 'Save Changes' : 'Create'}</Button>
               </div>
             </form>
           </DialogContent>
+        </Dialog>
+
+        <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Are you sure?</DialogTitle>
+                    <DialogDescription>
+                        This action cannot be undone. This will permanently delete the 
+                        <span className="font-semibold"> {selectedStock?.stockName} </span> 
+                        warehouse, all inventory data and all transaction data related to the warehouse.
+                    </DialogDescription>
+                </DialogHeader>
+                <DialogFooter>
+                    <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>Cancel</Button>
+                    <Button variant="destructive" onClick={handleConfirmDelete}>Confirm Delete (DANGER)</Button>
+                </DialogFooter>
+            </DialogContent>
         </Dialog>
       </div>
     </AdminLayout>
