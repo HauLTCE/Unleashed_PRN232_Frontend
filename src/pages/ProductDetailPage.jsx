@@ -1,17 +1,17 @@
-import React, { useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { Button } from '../components/ui/button';
-import { Badge } from '../components/ui/badge';
-import { Card, CardContent } from '../components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
+import { Heart, Minus, Plus, RotateCcw, Shield, ShoppingCart, Truck } from 'lucide-react';
+import { useState } from 'react';
+import { Link, useParams } from 'react-router-dom';
+import { toast } from 'sonner'; // sonner đã tích hợp sẵn, không cần @2.0.3
 import { ImageWithFallback } from '../components/figma/ImageWithFallback';
-import { ShoppingCart, Heart, Truck, Shield, RotateCcw, Minus, Plus } from 'lucide-react';
-import { toast } from 'sonner@2.0.3';
+import { Button } from '../components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
+import { useCart } from '../hooks/useCart'; // ✅ 1. Import useCart hook
 import { usePageProductDetail } from '../hooks/usePageProductDetail'; // import hook
 
 export function ProductDetailPage() {
-  const { id } = useParams();  // Get productId from URL
-  const { data: product, priceRange, images, loading, error } = usePageProductDetail(id);  // Get product data from the hook
+  const { id } = useParams();
+  const { data: product, priceRange, images, loading, error } = usePageProductDetail(id);
+  const { addItemToCart, isLoading: isCartLoading } = useCart(); // ✅ 2. Lấy hàm và trạng thái loading từ context
 
   const [selectedSize, setSelectedSize] = useState('');
   const [selectedColor, setSelectedColor] = useState('');
@@ -41,7 +41,9 @@ export function ProductDetailPage() {
   const uniqueSizes = Array.from(new Set(variations.map(v => v.size?.sizeName).filter(Boolean)));
   const uniqueColors = Array.from(new Set(variations.map(v => v.color?.colorName).filter(Boolean)));
 
-  const handleAddToCart = () => {
+  // ✅ 3. Cập nhật hoàn toàn hàm handleAddToCart
+  const handleAddToCart = async () => {
+    // Giữ lại validation cũ
     if (uniqueSizes.length > 0 && !selectedSize) {
       toast.error('Vui lòng chọn kích thước');
       return;
@@ -50,7 +52,28 @@ export function ProductDetailPage() {
       toast.error('Vui lòng chọn màu sắc');
       return;
     }
-    toast.success(`Đã thêm ${quantity} sản phẩm vào giỏ hàng!`);
+
+    // Tìm biến thể sản phẩm (variation) tương ứng với lựa chọn của người dùng
+    const selectedVariation = variations.find(v => {
+      const sizeMatch = uniqueSizes.length === 0 || v.size?.sizeName === selectedSize;
+      const colorMatch = uniqueColors.length === 0 || v.color?.colorName === selectedColor;
+      return sizeMatch && colorMatch;
+    });
+
+    if (!selectedVariation) {
+      toast.error('Sản phẩm với lựa chọn này không có sẵn.');
+      return;
+    }
+
+    // Gọi hàm từ context với variationId và số lượng
+    const result = await addItemToCart(selectedVariation.id, quantity);
+
+    // Hiển thị thông báo dựa trên kết quả trả về
+    if (result.success) {
+      toast.success(result.message || `Đã thêm ${quantity} sản phẩm vào giỏ hàng!`);
+    } else {
+      toast.error(result.message || 'Thêm sản phẩm thất bại.');
+    }
   };
 
   const decreaseQuantity = () => {
@@ -172,7 +195,6 @@ export function ProductDetailPage() {
               </div>
             )}
 
-            {/* ✅ Thay Select bằng nút tăng giảm */}
             <div>
               <label className="block mb-2 font-medium">Số lượng</label>
               <div className="flex items-center space-x-2">
@@ -191,11 +213,18 @@ export function ProductDetailPage() {
 
           {/* Action Buttons */}
           <div className="flex gap-4">
-            <Button onClick={handleAddToCart} className="flex-1">
-              <ShoppingCart className="mr-2 h-4 w-4" />
-              Thêm vào giỏ
+            {/* ✅ 4. Cập nhật nút để xử lý trạng thái loading */}
+            <Button onClick={handleAddToCart} className="flex-1" disabled={isCartLoading}>
+              {isCartLoading ? (
+                'Đang thêm...'
+              ) : (
+                <>
+                  <ShoppingCart className="mr-2 h-4 w-4" />
+                  Thêm vào giỏ
+                </>
+              )}
             </Button>
-            <Button variant="outline">
+            <Button variant="outline" disabled={isCartLoading}>
               <Heart className="h-4 w-4" />
             </Button>
           </div>

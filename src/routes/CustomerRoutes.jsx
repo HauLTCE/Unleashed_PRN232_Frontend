@@ -18,13 +18,14 @@ import { ForgotPasswordPage } from '../pages/ForgotPasswordPage';
 import { Homepage } from '../pages/Homepage';
 import { LoginPage } from '../pages/LoginPage';
 import { NotFoundPage } from '../pages/NotFoundPage';
-import { ProductDetailPage } from '../pages/ProductDetailPage';
+
 import { ResetPasswordPage } from '../pages/ResetPasswordPage';
 import { ServerErrorPage } from '../pages/ServerErrorPage';
 import { ShopPage } from '../pages/ShopPage';
 import { SignupPage } from '../pages/SignupPage';
 import { WishlistPage } from '../pages/WishlistPage';
 
+import { ProductDetailPage } from '../pages/ProductDetailPage';
 import { ProtectedRoute } from './ProtectedRoute';
 import CustomterOrderDetailPage from '../pages/CustomterOrderDetailPage';
 
