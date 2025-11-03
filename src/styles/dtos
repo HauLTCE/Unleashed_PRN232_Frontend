@@ -175,3 +175,51 @@ export type CategoryDTO = {
   categoryId: number;
   categoryName?: string | null;
 };
+// =============================
+// Comment DTOs
+// =============================
+
+export type CreateCommentDTO = {
+  reviewId: number;
+  commentContent: string;
+  parentCommentId?: number | null;
+};
+
+export type UpdateCommentDTO = {
+  commentContent: string;
+};
+
+export type CommentDTO = {
+  commentId: number;
+  reviewId: number;
+  commentContent: string;
+  parentCommentId?: number | null;
+  commentCreatedAt?: string | null;
+  commentUpdatedAt?: string | null;
+};
+
+// =============================
+// Review DTOs
+// =============================
+
+export type CreateReviewDTO = {
+  productId: string; 
+  userId: string; 
+  orderId: string; 
+  reviewRating: number;
+  reviewComment?: string | null;
+};
+
+export type UpdateReviewDTO = {
+
+  reviewRating: number;
+};
+
+export type ReviewDTO = {
+  reviewId: number;
+  productId?: string | null; 
+  userId?: string | null;   
+  orderId?: string | null;   
+  reviewRating?: number | null;
+  comments?: CommentDTO[] | null;
+};
