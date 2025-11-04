@@ -33,8 +33,20 @@ export const addToCart = async (variationId, quantity) => {
         const response = await apiClient.post(`/cart/${variationId}?quantity=${quantity}`);
         return response.data;
     } catch (error) {
-        console.error("Error adding item to cart:", error.response?.data || error.message);
-        throw error;
+        // THAY ĐỔI Ở ĐÂY
+        console.error("Full add to cart error object:", error); // Log toàn bộ object lỗi
+
+        let errorMessage = 'Thêm sản phẩm vào giỏ hàng thất bại.';
+        // Nếu server trả về một message lỗi cụ thể, hãy dùng nó
+        if (error.response && error.response.data && error.response.data.message) {
+            errorMessage = error.response.data.message;
+        }
+
+        // Dòng log cũ của bạn, bây giờ có thể kèm theo thông tin chi tiết hơn
+        console.log('Add to cart error:', errorMessage);
+
+        // ... phần còn lại giữ nguyên
+        return { success: false, message: errorMessage };
     }
 };
 
@@ -89,6 +101,21 @@ export const updateItemQuantity = async (variationId, newQuantity) => {
         return response.data;
     } catch (error) {
         console.error("Error updating item quantity:", error.response?.data || error.message);
+        throw error;
+    }
+};
+
+export const getStockByVariationId = async (variationId) => {
+    if (!variationId) throw new Error("Variation ID is required");
+
+    try {
+        const response = await apiClient.get(`https://localhost:7212/api/stockvariations/get-stock-by-variation/${variationId}`);
+        console.log(response)
+        const data = response.data;
+        const available = data?.totalQuantity ?? 0;
+        return { available, isOutOfStock: available <= 0 };
+    } catch (error) {
+        console.error("Error fetching stock variation:", error.response?.data || error.message);
         throw error;
     }
 };
