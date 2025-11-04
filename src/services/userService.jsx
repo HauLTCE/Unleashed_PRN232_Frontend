@@ -101,8 +101,22 @@ const userService = {
 
 
     },
-
-
+    /**
+         * Fetches basic info (ID, name, image) for a list of user IDs.
+         * Corresponds to: POST /api/Users/review-info
+         * @param {Array<string>} userIds An array of user GUIDs.
+         * @returns {Promise<Array<object>>} A promise that resolves to an array of UserReviewDTOs.
+         */
+    getUserReviewInfos: async (userIds) => {
+        try {
+            // Chúng ta dùng POST để gửi một mảng ID trong body
+            const response = await apiClient.post('/Users/review-info', userIds);
+            return response.data;
+        } catch (error) {
+            console.error("Error fetching user review infos:", error);
+            throw error;
+        }
+    },
     changeStatus: (userId) => {
         return apiClient.put(`/Users/change-status?id=${userId}`);
     }

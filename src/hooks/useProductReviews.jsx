@@ -1,14 +1,18 @@
 // src/hooks/useProductReviews.jsx
 import { useEffect, useState, useCallback } from 'react';
-import { ReviewService } from '@/services/reviewService'; 
+import { ReviewService } from '@/services/reviewService';
 // Sếp chỉnh lại path cho đúng dự án nhé
 
 export function useProductReviews(productId, initialPage = 0, initialSize = 10) {
-  const [data, setData] = useState(null);        // toàn bộ response từ API
+  const [data, setData] = useState(null); // toàn bộ response từ API
   const [page, setPage] = useState(initialPage);
   const [size, setSize] = useState(initialSize);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+
+  // ✅ Thêm state cho eligibility
+  const [eligibility, setEligibility] = useState(null); // Sẽ lưu { orderId, orderDate }
+  const [checkingEligibility, setCheckingEligibility] = useState(true);
 
   const fetchReviews = useCallback(
     async (overridePage, overrideSize) => {
@@ -26,7 +30,6 @@ export function useProductReviews(productId, initialPage = 0, initialSize = 10) 
           currentPage,
           currentSize
         );
-        // Không đoán cấu trúc, giữ nguyên data để sếp tự dùng
         setData(res);
       } catch (err) {
         console.error('Failed to fetch reviews', err);
@@ -38,10 +41,42 @@ export function useProductReviews(productId, initialPage = 0, initialSize = 10) 
     [productId, page, size]
   );
 
-  // Load khi đổi productId hoặc kích thước page
+  // ✅ Effect mới: Tự động kiểm tra eligibility khi productId thay đổi
+  useEffect(() => {
+    if (!productId) {
+      setCheckingEligibility(false);
+      return;
+    }
+
+    // Reset state khi đổi product
+    setCheckingEligibility(true);
+    setEligibility(null);
+
+    // Kiểm tra xem đã login chưa
+    const userId = localStorage.getItem('authUser');
+    if (!userId) {
+      // Chưa login, không cần check API
+      setCheckingEligibility(false);
+      return;
+    }
+
+    // Đã login, tiến hành check
+    ReviewService.checkEligibility(productId)
+      .then((res) => {
+        setEligibility(res); // Lưu { orderId, orderDate }
+      })
+      .catch((err) => {
+        console.warn('User not eligible to review', err.response?.data);
+        setEligibility(null); // Không đủ điều kiện
+      })
+      .finally(() => {
+        setCheckingEligibility(false);
+      });
+  }, [productId]); // Chạy lại mỗi khi productId thay đổi
+
+  // Load reviews (Effect cũ)
   useEffect(() => {
     if (!productId) return;
-    // reset về page 0 mỗi khi đổi product
     setPage(0);
     fetchReviews(0, size);
   }, [productId, size, fetchReviews]);
@@ -53,6 +88,11 @@ export function useProductReviews(productId, initialPage = 0, initialSize = 10) 
         const created = await ReviewService.createReview(payload);
         // reload lại để thấy review mới
         await fetchReviews();
+
+        // ✅ Sau khi review thành công, set lại eligibility = null
+        // để ẩn form đi
+        setEligibility(null);
+
         return created;
       } catch (err) {
         console.error('Failed to create review', err);
@@ -102,7 +142,7 @@ export function useProductReviews(productId, initialPage = 0, initialSize = 10) 
   };
 
   return {
-    data,          // toàn bộ trang review trả về
+    data, // toàn bộ trang review trả về
     page,
     size,
     loading,
@@ -113,5 +153,9 @@ export function useProductReviews(productId, initialPage = 0, initialSize = 10) 
     createReview,
     updateReview,
     deleteReview,
+
+    // ✅ Xuất state mới ra cho component dùng
+    eligibility,
+    checkingEligibility,
   };
 }
