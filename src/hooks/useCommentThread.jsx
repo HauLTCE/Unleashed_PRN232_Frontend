@@ -6,7 +6,7 @@ import {
   deleteComment,
   getCommentById,
   getCommentDescendants,
-} from '@/services/CommentsService'; 
+} from '@/services/CommentService'; 
 // Sếp chỉnh lại path cho đúng nhé
 
 /**
