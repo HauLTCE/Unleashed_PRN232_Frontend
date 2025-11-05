@@ -145,7 +145,7 @@ function EditDiscountDialog({ isOpen, onOpenChange, discount, onSave, isSaving }
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="1">Percentage (%)</SelectItem>
-                  <SelectItem value="2">Fixed Amount ($)</SelectItem>
+                  <SelectItem value="2">Fixed Amount (đ))</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -484,7 +484,7 @@ export function DiscountsPage() {
                       </Button>
                     </div>
                   </TableCell>
-                  <TableCell>{discount.discountValue}{discount.discountTypeName === 'PERCENTAGE' ? '%' : '$'} off</TableCell>
+                  <TableCell>{discount.discountValue}{discount.discountTypeName === 'PERCENTAGE' ? '%' : 'đ'} off</TableCell>
                   <TableCell>0 / {discount.discountUsageLimit}</TableCell>
                   <TableCell>{new Date(discount.discountEndDate).toLocaleDateString()}</TableCell>
                   <TableCell>{getStatusBadge(discount.discountStatusName)}</TableCell>

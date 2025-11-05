@@ -280,7 +280,7 @@ export function AccountPage() {
                         </div>
 
                         <div className="text-right">
-                          <p className="font-semibold">${o.orderTotalAmount?.toFixed(2)}</p>
+                          <p className="font-semibold">{o.orderTotalAmount?.toFixed(2)}đ</p>
                           <Badge variant="outline">{o.orderStatusName}</Badge>
                         </div>
                       </Link>

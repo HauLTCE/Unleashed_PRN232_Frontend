@@ -17,9 +17,9 @@ export function LoginPage() {
     password: '',
     rememberMe: false
   });
-  const [isLoading, setIsLoading] = useState(false);
+
   const navigate = useNavigate();
-  const { login, isAuthenticated, role } = useAuth();
+  const { login, isAuthenticated, role, isLoading } = useAuth();
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -51,7 +51,7 @@ export function LoginPage() {
   };
 
   const handleGoogleLogin = () => {
-    toast.info('Google login would be implemented here');
+    toast.info('Google login is still in development');
   };
 
   // Helper function to simplify state updates for text inputs.

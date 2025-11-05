@@ -256,7 +256,7 @@ export function OrdersPage() {
                         </div>
                       </TableCell>
                       {/* Cập nhật: order.totalAmount -> order.orderTotalAmount */}
-                      <TableCell className="font-medium">${order.orderTotalAmount.toFixed(2)}</TableCell>
+                      <TableCell className="font-medium">{order.orderTotalAmount?.toFixed(2)}đ</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <Button variant="ghost" size="sm" asChild>
