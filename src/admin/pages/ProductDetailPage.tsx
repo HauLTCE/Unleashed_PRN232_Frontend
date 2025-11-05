@@ -1,22 +1,48 @@
-import React, { useState } from 'react';
+// ProductDetailPage.js (Trang Admin - Đã cập nhật)
+
+import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { AdminLayout } from '../components/AdminLayout';
+import { AdminLayout } from '../components/AdminLayout'; // Giả sử path này đúng
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
 import { ArrowLeft, Edit, Trash2 } from 'lucide-react';
-import { usePageProductDetail } from '@/hooks/usePageProductDetail';
-import { deleteProduct } from '@/services/ProductsService';
-import { ImageWithFallback } from '../../components/figma/ImageWithFallback';
+import { usePageProductDetail } from '@/hooks/usePageProductDetail'; // Giả sử path này đúng
+import { deleteProduct } from '@/services/ProductsService'; // Giả sử path này đúng
+import { ImageWithFallback } from '../../components/figma/ImageWithFallback'; // Giả sử path này đúng
+import { useProductRating } from '@/hooks/useProductRating'; // Giả sử path này đúng
 
 export function ProductDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
 
+  // Hook này (của admin) được giả định là đã tải tất cả thông tin
+  // bao gồm variations, stock, v.v.
   const { data: product, loading, error } = usePageProductDetail(id);
+
+  const {
+    rating,
+    count: reviewCount,
+    loading: ratingLoading,
+  } = useProductRating(id);
 
   const [selectedVariation, setSelectedVariation] = useState(null);
   const [selectedImage, setSelectedImage] = useState(null);
+
+  // Tự động chọn variation đầu tiên khi load
+  useEffect(() => {
+    if (product && !selectedVariation) {
+      const defaultVar =
+        product.variations && product.variations.length > 0
+          ? product.variations[0]
+          : null;
+
+      if (defaultVar) {
+        setSelectedVariation(defaultVar);
+        setSelectedImage(defaultVar.variationImage || null);
+      }
+    }
+  }, [product, selectedVariation]);
 
   if (loading) {
     return (
@@ -44,13 +70,16 @@ export function ProductDetailPage() {
     );
   }
 
+  // Hàm badge cho stock (Giữ nguyên)
   const getStockBadge = (stock) => {
     const qty = Number(stock ?? 0);
+    if (isNaN(qty)) return <Badge variant="outline">N/A</Badge>;
     if (qty === 0) return <Badge variant="destructive">Out of Stock</Badge>;
     if (qty < 10) return <Badge variant="secondary">Low Stock</Badge>;
     return <Badge variant="default">In Stock</Badge>;
   };
 
+  // Hàm badge cho status (Giữ nguyên)
   const getStatusBadge = (statusObj) => {
     const statusName =
       statusObj?.productStatusName ||
@@ -84,8 +113,10 @@ export function ProductDetailPage() {
     }
   };
 
+  // Logic lấy ảnh, giá, stock từ variation đã chọn (Giữ nguyên)
   const mainImage =
     selectedImage ||
+    (selectedVariation && selectedVariation.variationImage) ||
     (product.variations && product.variations.length > 0
       ? product.variations[0].variationImage
       : product.image);
@@ -95,7 +126,12 @@ export function ProductDetailPage() {
       ? selectedVariation.variationPrice
       : null;
 
-  const stockQty = product.stock ?? 0;
+  const stockQty =
+    selectedVariation && selectedVariation.quantity != null
+      ? selectedVariation.quantity
+      : selectedVariation && selectedVariation.stock != null
+        ? selectedVariation.stock
+        : 0;
 
   return (
     <AdminLayout>
@@ -174,18 +210,19 @@ export function ProductDetailPage() {
 
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">
-                    Price
+                    Price (Selected Variation)
                   </label>
                   <p className="text-base font-semibold">
+                    {/* ✅ ĐÃ SỬA SANG VND */}
                     {currentPrice != null
-                      ? `$${Number(currentPrice).toFixed(2)}`
-                      : 'Price not selected'}
+                      ? `${Number(currentPrice).toLocaleString('vi-VN')}₫`
+                      : 'N/A'}
                   </p>
                 </div>
 
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">
-                    Stock
+                    Stock (Selected Variation)
                   </label>
                   <div className="flex items-center gap-2">
                     <span className="text-base">{stockQty}</span>
@@ -202,13 +239,12 @@ export function ProductDetailPage() {
 
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">
-                    Total Value
+                    Total Value (Selected)
                   </label>
                   <p className="text-base font-semibold">
+                    {/* ✅ ĐÃ SỬA SANG VND */}
                     {stockQty && currentPrice != null
-                      ? `$${(Number(currentPrice) * Number(stockQty)).toFixed(
-                          2
-                        )}`
+                      ? `${(Number(currentPrice) * Number(stockQty)).toLocaleString('vi-VN')}₫`
                       : '—'}
                   </p>
                 </div>
@@ -251,72 +287,96 @@ export function ProductDetailPage() {
             </CardHeader>
             <CardContent>
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {product.variations.map((variation) => (
-                  <Card key={variation.variationId}>
-                    <CardContent className="pt-6 space-y-2">
-                      <ImageWithFallback
-                        src={variation.variationImage}
-                        alt={`${product.productName} - ${variation.color} ${variation.size}`}
-                        className="w-full h-32 object-cover rounded-md"
-                      />
+                {product.variations.map((variation) => {
+                  // Lấy stock từ data đã tải
+                  const varStock =
+                    variation.quantity ?? variation.stock ?? 'N/A';
 
-                      <h4 className="font-medium">
-                        {variation.color?.colorName ||
-                          variation.color ||
-                          '—'}{' '}
-                        -{' '}
-                        {variation.size?.sizeName ||
-                          variation.size ||
-                          '—'}
-                      </h4>
+                  return (
+                    <Card
+                      key={variation.variationId}
+                      className={
+                        selectedVariation?.variationId ===
+                          variation.variationId
+                          ? 'border-primary'
+                          : ''
+                      }
+                    >
+                      <CardContent className="pt-6 space-y-2">
+                        <ImageWithFallback
+                          src={variation.variationImage}
+                          alt={`${product.productName} - ${variation.color} ${variation.size}`}
+                          className="w-full h-32 object-cover rounded-md"
+                        />
 
-                      <p className="text-sm text-muted-foreground">
-                        Price:{' '}
-                        {variation.variationPrice != null
-                          ? `$${Number(
+                        {/* ✅ HIỂN THỊ SIZE/COLOR TRÊN CARD */}
+                        <h4 className="font-medium">
+                          {variation.color?.colorName ||
+                            variation.color ||
+                            '—'}{' '}
+                          -{' '}
+                          {variation.size?.sizeName ||
+                            variation.size ||
+                            '—'}
+                        </h4>
+
+                        <p className="text-sm text-muted-foreground">
+                          Price:{' '}
+                          {/* ✅ ĐÃ SỬA SANG VND */}
+                          {variation.variationPrice != null
+                            ? `${Number(
                               variation.variationPrice
-                            ).toFixed(2)}`
-                          : '—'}
-                      </p>
+                            ).toLocaleString('vi-VN')}₫`
+                            : '—'}
+                        </p>
 
-                      <Button
-                        variant="outline"
-                        onClick={() => handleVariationChange(variation)}
-                      >
-                        Select Variation
-                      </Button>
-                    </CardContent>
-                  </Card>
-                ))}
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm text-muted-foreground">
+                            Stock: {varStock}
+                          </p>
+                          {getStockBadge(varStock)}
+                        </div>
+
+                        <Button
+                          variant={
+                            selectedVariation?.variationId ===
+                              variation.variationId
+                              ? 'default'
+                              : 'outline'
+                          }
+                          onClick={() => handleVariationChange(variation)}
+                          className="w-full"
+                        >
+                          {selectedVariation?.variationId ===
+                            variation.variationId
+                            ? 'Selected'
+                            : 'Select Variation'}
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
               </div>
             </CardContent>
           </Card>
         )}
 
-        {/* Quick Stats (mock) */}
+        {/* Quick Stats (Rating/Reviews) */}
         <div className="grid gap-4 md:grid-cols-4">
           <Card>
             <CardContent className="pt-6">
-              <div className="text-2xl font-bold">24</div>
-              <p className="text-xs text-muted-foreground">Total Sales</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="text-2xl font-bold">$1,440</div>
-              <p className="text-xs text-muted-foreground">Revenue Generated</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="text-2xl font-bold">4.5</div>
+              <div className="text-2xl font-bold">
+                {ratingLoading ? '...' : rating.toFixed(1)}
+              </div>
               <p className="text-xs text-muted-foreground">Average Rating</p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="pt-6">
-              <div className="text-2xl font-bold">12</div>
-              <p className="text-xs text-muted-foreground">Reviews</p>
+              <div className="text-2xl font-bold">
+                {ratingLoading ? '...' : reviewCount}
+              </div>
+              <p className="text-xs text-muted-foreground">Total Reviews</p>
             </CardContent>
           </Card>
         </div>

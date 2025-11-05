@@ -66,30 +66,34 @@ export function ProductsPage() {
   const [categoryFilter, setCategoryFilter] = React.useState('all');
   const [statusFilter, setStatusFilter] = React.useState('all');
 
-  // đồng bộ search
+  // đồng bộ search (Giữ nguyên)
   React.useEffect(() => {
     setSearch(searchQuery);
   }, [searchQuery, setSearch]);
 
-  // đồng bộ filter
+  // đồng bộ filter (ĐÃ SỬA LỖI)
   React.useEffect(() => {
     const filters = {};
+
+    // Nếu filter != 'all', thêm vào object
     if (categoryFilter !== 'all') {
       filters.categoryIds = [Number(categoryFilter)];
+    } else {
+      // QUAN TRỌNG: Nếu = 'all', phải set là undefined
+      // để ghi đè (xoá) filter cũ trong hook usePagedProducts
+      filters.categoryIds = undefined;
     }
+
     if (statusFilter !== 'all') {
       filters.productStatusIds = [Number(statusFilter)];
+    } else {
+      // Tương tự, set undefined để xoá filter
+      filters.productStatusIds = undefined;
     }
+
     setFilters(filters);
   }, [categoryFilter, statusFilter, setFilters]);
 
-  // badge tồn kho
-  const getStockBadge = (stock) => {
-    const qty = Number(stock ?? 0);
-    if (qty === 0) return <Badge variant="destructive">Out of Stock</Badge>;
-    if (qty < 10) return <Badge variant="secondary">Low Stock</Badge>;
-    return <Badge variant="default">In Stock</Badge>;
-  };
 
   // badge trạng thái
   const getStatusBadge = (statusLike) => {
@@ -97,8 +101,8 @@ export function ProductsPage() {
       typeof statusLike === 'string'
         ? statusLike
         : statusLike?.productStatusName ||
-          statusLike?.name ||
-          'Unknown';
+        statusLike?.name ||
+        'Unknown';
 
     const active =
       statusName?.toLowerCase() === 'available' ||
@@ -224,7 +228,7 @@ export function ProductsPage() {
                   <TableRow>
                     <TableHead>Product</TableHead>
                     <TableHead>Category</TableHead>
-                    <TableHead>Stock</TableHead>
+                    <TableHead>Brand</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Actions</TableHead>
                   </TableRow>
@@ -250,11 +254,12 @@ export function ProductsPage() {
                         product.categoryList[0].categoryName) ||
                       'Uncategorized';
 
-                    // Số lượng tồn kho: ưu tiên quantity -> stockQuantity -> 0
-                    const stockQty =
-                      product.quantity ??
-                      product.stockQuantity ??
-                      0;
+                    // Tên brand
+                    const brandName =
+                      product.brand?.brandName ||
+                      product.brand?.name ||
+                      product.brandName ||
+                      'No Brand';
 
                     // Trạng thái
                     const statusLike =
@@ -287,13 +292,8 @@ export function ProductsPage() {
                         {/* Category */}
                         <TableCell>{categoryName}</TableCell>
 
-                        {/* Stock */}
-                        <TableCell>
-                          <div className="space-y-1">
-                            <div>{stockQty}</div>
-                            {getStockBadge(stockQty)}
-                          </div>
-                        </TableCell>
+                        {/* Brand */}
+                        <TableCell>{brandName}</TableCell>
 
                         {/* Status */}
                         <TableCell>
