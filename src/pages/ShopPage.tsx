@@ -301,8 +301,8 @@ export function ShopPage() {
               <h4 className="font-medium mb-3">Price (per page)</h4>
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-sm">
-                  <span>${pageMinPrice}</span>
-                  <span>${priceMax}</span>
+                  <span>{pageMinPrice}đ</span>
+                  <span>{priceMax}đ</span>
                 </div>
                 <input
                   type="range"
@@ -316,7 +316,7 @@ export function ShopPage() {
                   className="w-full"
                 />
                 <p className="text-xs text-muted-foreground">
-                  Showing products with min-variation price ≤ ${priceMax}
+                  Showing products with min-variation price ≤ {priceMax}đ
                 </p>
               </div>
             </div>
@@ -399,11 +399,11 @@ export function ShopPage() {
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-2">
                           <span className="font-semibold">
-                            {price != null ? `$${price}` : '—'}
+                            {price != null ? `${price}đ` : '—'}
                           </span>
                           {product.originalPrice && (
                             <span className="text-sm text-muted-foreground line-through">
-                              ${product.originalPrice}
+                              {product.originalPrice}đ
                             </span>
                           )}
                         </div>

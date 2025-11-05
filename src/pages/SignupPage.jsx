@@ -57,7 +57,7 @@ export function SignupPage() {
   };
 
   const handleGoogleSignup = () => {
-    toast.info('Google signup would be implemented here');
+    toast.info('Google signup still in development');
   };
 
   return (

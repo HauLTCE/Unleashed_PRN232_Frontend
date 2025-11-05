@@ -130,7 +130,7 @@ export function Homepage() {
             <Button size="lg" asChild className="bg-primary hover:bg-primary/90">
               <Link to="/shop">Shop Now</Link>
             </Button>
-            <Button size="lg" variant="outline" className="border-white text-white hover:bg-white hover:text-black">
+            <Button size="lg" variant="" className="border-black text-white hover:bg-white hover:text-black">
               <Link to="/about">Learn More</Link>
             </Button>
           </div>
