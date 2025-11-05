@@ -93,12 +93,6 @@ export function CustomerDetailPage() {
                                 </div>
                             </CardContent>
                         </Card>
-                        <Card>
-                            <CardHeader><CardTitle>Actions</CardTitle></CardHeader>
-                            <CardContent className="space-y-2">
-                                <Button variant="destructive" className="w-full" onClick={() => alert('Deleting customer...')}>Delete Customer</Button>
-                            </CardContent>
-                        </Card>
                     </div>
 
                     {/* Right Column: Detailed Information */}
