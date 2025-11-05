@@ -16,6 +16,7 @@ import {
 import { Search, Eye, Mail, Trash2, PlusCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useUsers } from '../../hooks/User/useUsers';
+import { toast } from 'sonner';
 
 const ITEMS_PER_PAGE = 10;
 
@@ -188,12 +189,12 @@ export function CustomersPage() {
   }, [apiUsers]);
 
   const handleDeleteCustomer = async (id) => {
-    if (window.confirm('Are you sure you want to delete this customer?')) {
+    if (window.confirm('Are you sure you want to deactivate this user?')) {
       const success = await removeUser(id);
-      if (success) {
+      try {
         fetchUsers(currentPage, ITEMS_PER_PAGE, debouncedSearchQuery);
-      } else {
-        alert('Failed to delete customer. Please try again.');
+      } catch {
+        toast.error('Failed to deactivate customer. Please try again.');
       }
     }
   };
