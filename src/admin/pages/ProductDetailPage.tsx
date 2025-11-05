@@ -10,55 +10,25 @@ import { deleteProduct } from '@/services/ProductsService';
 import { ImageWithFallback } from '../../components/figma/ImageWithFallback'; 
 import { useProductRating } from '@/hooks/useProductRating'; 
 import { getStockByVariationId } from '@/services/cartService'; 
-import { getColors } from '@/services/ColorService'; 
-import { getSizes } from '@/services/SizeService'; 
-import { searchVariations } from '@/services/VariationsService'; 
+import { useColors } from '@/hooks/useColors'; 
+import { useSizes } from '@/hooks/useSizes'; 
+import { useVariations } from '@/hooks/useVariations'; 
 
 export function ProductDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
 
-  // Hook này (của admin) được giả định là đã tải tất cả thông tin
   const { data: product, loading, error } = usePageProductDetail(id);
-
   const { rating, count: reviewCount, loading: ratingLoading } = useProductRating(id);
 
   const [selectedVariation, setSelectedVariation] = useState(null);
   const [selectedImage, setSelectedImage] = useState(null);
-  const [variationStock, setVariationStock] = useState(null); 
+  const [variationStock, setVariationStock] = useState(null);
 
-  const [colors, setColors] = useState([]); 
-  const [sizes, setSizes] = useState([]); 
+  const { colors, loading: colorsLoading, error: colorsError } = useColors(selectedVariation?.colorId); 
+  const { sizes, loading: sizesLoading, error: sizesError } = useSizes(selectedVariation?.sizeId);
+  const { variations, loading: variationsLoading, error: variationsError } = useVariations(id);
 
-  const [variations, setVariations] = useState([]); // To store variations
-
-  // Lấy dữ liệu màu sắc và kích thước khi variationId thay đổi
-  useEffect(() => {
-    if (product) {
-      const fetchVariationDetails = async () => {
-        try {
-          // Lấy tất cả variation của sản phẩm
-          const variationData = await searchVariations({ search: '', productId: product.productId });
-          setVariations(variationData); // Set variations từ API
-
-          if (selectedVariation) {
-            // Lấy màu sắc và kích thước cho variation đã chọn
-            const color = await getColors({ params: { colorId: selectedVariation.colorId } });
-            const size = await getSizes({ params: { sizeId: selectedVariation.sizeId } });
-
-            // Cập nhật dữ liệu màu sắc và kích thước
-            setColors(color);
-            setSizes(size);
-          }
-        } catch (error) {
-          console.error("Không thể lấy thông tin variation:", error);
-        }
-      };
-      fetchVariationDetails();
-    }
-  }, [product, selectedVariation]);
-
-  // Tự động chọn variation đầu tiên khi load
   useEffect(() => {
     if (product && !selectedVariation) {
       const defaultVar = product.variations && product.variations.length > 0 ? product.variations[0] : null;
@@ -83,6 +53,28 @@ export function ProductDetailPage() {
       fetchStock();
     }
   }, [selectedVariation]);
+
+  useEffect(() => {
+    if (product) {
+      const fetchVariationDetails = async () => {
+        try {
+          const variationData = await searchVariations({ search: '', productId: product.productId });
+          setVariations(variationData);
+
+          if (selectedVariation) {
+            const color = await getColors({ params: { colorId: selectedVariation.colorId } });
+            const size = await getSizes({ params: { sizeId: selectedVariation.sizeId } });
+
+            setColors(color);
+            setSizes(size);
+          }
+        } catch (error) {
+          console.error("Không thể lấy thông tin variation:", error);
+        }
+      };
+      fetchVariationDetails();
+    }
+  }, [product, selectedVariation]);
 
   if (loading) {
     return (
