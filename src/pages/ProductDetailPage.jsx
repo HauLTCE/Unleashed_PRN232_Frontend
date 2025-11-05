@@ -11,12 +11,11 @@ import {
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
-import { ImageWithFallback } from '../components/figma/ImageWithFallback';
 import { Button } from '../components/ui/button';
 import { useCart } from '../hooks/useCart';
 import { usePageProductDetail } from '../hooks/usePageProductDetail';
 import { getStockByVariationId } from '../services/cartService';
-
+import { ImageWithFallback } from '../components/figma/ImageWithFallback';
 import { Textarea } from '../components/ui/textarea';
 import { useProductRating } from '../hooks/useProductRating';
 import { useProductReviews } from '../hooks/useProductReviews';
@@ -24,6 +23,8 @@ import { useProductReviews } from '../hooks/useProductReviews';
 import { useColors } from '../hooks/useColors';
 import { useSizes } from '../hooks/useSizes';
 import { useVariations } from '../hooks/useVariations';
+import userService from '../services/userService';  // Import userService
+import { ReviewService } from '../services/ReviewService';  // Import ReviewService
 
 export function ProductDetailPage() {
   const { id } = useParams();
@@ -34,10 +35,14 @@ export function ProductDetailPage() {
   const [quantity, setQuantity] = useState(1);
   const [stock, setStock] = useState(null);
 
+  // Review-related states
+  const [reviews, setReviews] = useState([]); // Store reviews
+  const [reviewersInfo, setReviewersInfo] = useState([]); // Store reviewer info
+
   // Use hooks to get size and color information
   const { colors, loading: colorsLoading, error: colorsError } = useColors(selectedVariationId);
   const { sizes, loading: sizesLoading, error: sizesError } = useSizes(selectedVariationId);
-  const { variations } = useVariations(id);  // Removed the declaration of variations here
+  const { variations } = useVariations(id);
 
   const { rating, count: reviewCount, loading: ratingLoading } = useProductRating(id);
 
@@ -81,6 +86,25 @@ export function ProductDetailPage() {
 
     fetchStock();
   }, [selectedVariation]);
+
+  // Fetch reviews and reviewer information using both ReviewService and userService
+  useEffect(() => {
+    const fetchReviews = async () => {
+      try {
+        // Bước 1: Lấy danh sách đánh giá từ ReviewService
+        const reviewResponse = await ReviewService.getReviewsByProductId(id);  
+        setReviews(reviewResponse || []);
+
+        // Bước 2: Lấy thông tin người dùng từ userService
+        const reviewerIds = reviewResponse?.map(review => review.userId) || [];
+        const reviewerInfoResponse = await userService.getUserReviewInfos(reviewerIds);  
+        setReviewersInfo(reviewerInfoResponse || []); 
+      } catch (error) {
+        console.error('Lỗi khi lấy đánh giá hoặc thông tin người dùng:', error);
+      }
+    };
+    fetchReviews();
+  }, [id]);
 
   const handleAddToCart = async () => {
     if (!selectedVariation) {
@@ -141,6 +165,32 @@ export function ProductDetailPage() {
     }
   };
 
+  const handleSubmitReview = async () => {
+    if (!newComment || newRating === 0) {
+      toast.error('Vui lòng nhập bình luận và đánh giá');
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const reviewData = {
+        productId: id,
+        rating: newRating,
+        content: newComment,
+        userId: userId
+      };
+      await userService.addReview(reviewData);  // Use userService to submit review
+      toast.success('Đánh giá đã được gửi!');
+      setNewRating(0);
+      setNewComment('');
+      setIsSubmitting(false);
+    } catch (error) {
+      toast.error('Không thể gửi đánh giá. Vui lòng thử lại.');
+      setIsSubmitting(false);
+    }
+  };
+
   const isOutOfStock = stock !== null && stock.isOutOfStock;
   const availableStock = stock?.available ?? null;
 
@@ -173,7 +223,9 @@ export function ProductDetailPage() {
         <span className="text-foreground">{product.productName}</span>
       </div>
 
+      {/* Product Information */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 mb-16">
+        {/* Product Image & Variations */}
         <div className="space-y-4">
           <div className="aspect-square rounded-lg overflow-hidden bg-muted">
             <ImageWithFallback src={selectedVariation?.variationImage} alt={product.productName} className="w-full h-full object-cover" />
@@ -197,6 +249,7 @@ export function ProductDetailPage() {
           )}
         </div>
 
+        {/* Product Details */}
         <div className="space-y-6">
           <div>
             <h1 className="text-3xl font-bold mb-2">{product.productName}</h1>
@@ -215,6 +268,7 @@ export function ProductDetailPage() {
 
           <p className="text-muted-foreground whitespace-pre-line">{product.productDescription}</p>
 
+          {/* Stock Information */}
           <div className="space-y-4">
             <div className="h-5 pt-1">
               {isOutOfStock ? (
@@ -228,6 +282,7 @@ export function ProductDetailPage() {
               )}
             </div>
 
+            {/* Quantity Control */}
             <div>
               <label className="block mb-2 font-medium">Số lượng</label>
               <div className="flex items-center space-x-2">
@@ -245,6 +300,7 @@ export function ProductDetailPage() {
             </div>
           </div>
 
+          {/* Add to Cart Button */}
           <div className="flex gap-4">
             <Button onClick={handleAddToCart} className="flex-1" disabled={isCartLoading || isOutOfStock || !selectedVariation}>
               {isCartLoading ? 'Đang thêm...' : isOutOfStock ? 'Hết hàng' : (<><ShoppingCart className="mr-2 h-4 w-4" /> Thêm vào giỏ</>)}
@@ -252,11 +308,74 @@ export function ProductDetailPage() {
             <Button variant="outline" disabled={isCartLoading}><Heart className="h-4 w-4" /></Button>
           </div>
 
+          {/* Shipping & Warranty Info */}
           <div className="border-t pt-6 space-y-4">
             <div className="flex items-center space-x-3"><Truck className="h-5 w-5 text-primary" /><span className="text-sm">Miễn phí vận chuyển cho đơn hàng trên 1.000.000₫</span></div>
             <div className="flex items-center space-x-3"><RotateCcw className="h-5 w-5 text-primary" /><span className="text-sm">Đổi trả trong vòng 30 ngày</span></div>
             <div className="flex items-center space-x-3"><Shield className="h-5 w-5 text-primary" /><span className="text-sm">Bảo hành 2 năm</span></div>
           </div>
+        </div>
+      </div>
+
+      {/* Reviews Section */}
+      <div className="border-t pt-6 space-y-4">
+        <div className="text-xl font-semibold">Đánh giá và Bình luận</div>
+        <div className="flex items-center">
+          <span className="text-yellow-500">
+            {Array.from({ length: rating }).map((_, index) => (
+              <Star key={index} className="h-5 w-5 inline-block" />
+            ))}
+          </span>
+          <span className="ml-2 text-sm">{reviewCount} Đánh giá</span>
+        </div>
+
+        {/* Display Reviews */}
+        <div className="space-y-4">
+          {reviews.length > 0 ? reviews.map((review, idx) => (
+            <div key={review.reviewId} className="border p-4 rounded-lg">
+              <div className="flex items-center">
+                <ImageWithFallback
+                  src={reviewersInfo[idx]?.image || '/default-avatar.png'}
+                  alt="Reviewer Avatar"
+                  className="h-10 w-10 rounded-full mr-3"
+                />
+                <div className="font-semibold">{reviewersInfo[idx]?.name || 'Anonymous'}</div>
+              </div>
+              <div className="text-yellow-500">
+                {Array.from({ length: review.rating }).map((_, i) => (
+                  <Star key={i} className="h-5 w-5 inline-block" />
+                ))}
+              </div>
+              <p>{review.content}</p>
+            </div>
+          )) : (
+            <p>Chưa có đánh giá nào cho sản phẩm này.</p>
+          )}
+        </div>
+
+        {/* Write Review */}
+        <div className="mt-6">
+          <div className="text-xl font-semibold">Viết đánh giá của bạn</div>
+          <div className="flex items-center space-x-2 mb-4">
+            <span>Đánh giá: </span>
+            <div className="flex items-center">
+              {Array.from({ length: 5 }).map((_, index) => (
+                <Star
+                  key={index}
+                  className={`h-5 w-5 cursor-pointer ${newRating > index ? 'text-yellow-500' : 'text-gray-300'}`}
+                  onClick={() => setNewRating(index + 1)}
+                />
+              ))}
+            </div>
+          </div>
+          <Textarea
+            value={newComment}
+            onChange={(e) => setNewComment(e.target.value)}
+            placeholder="Viết bình luận..."
+            rows={4}
+            className="mb-4"
+          />
+          <Button onClick={handleSubmitReview} disabled={isSubmitting}>Gửi Đánh Giá</Button>
         </div>
       </div>
     </div>
