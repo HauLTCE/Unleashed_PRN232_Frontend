@@ -111,4 +111,16 @@ export const ReviewService = {
     });
     return res.data;
   },
+    /**
+   * Fetches rating summaries for a list of product IDs.
+   * @param {string[]} productIds - An array of product GUIDs.
+   * @returns {Promise<Array<{productId: string, averageRating: number, reviewCount: number}>>}
+   */
+  async getProductRatingSummaries(productIds) {
+    if (!productIds || productIds.length === 0) {
+      return [];
+    }
+    const res = await apiClient.post('/Reviews/ratings-summary', productIds);
+    return res.data;
+  },
 };
