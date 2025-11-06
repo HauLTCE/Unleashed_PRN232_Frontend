@@ -11,11 +11,12 @@ import { Pagination, PaginationContent, PaginationItem, PaginationLink, Paginati
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { useApp } from '../contexts/AppContext';
 
-// 🧠 Dữ liệu thật (server-side, không dùng react-query)
+// 🧠 Dữ liệu thật
 import { useCart } from '@/hooks/useCart';
 import { usePagedProducts } from '@/hooks/usePagedProducts';
+import { ReviewService } from '@/services/reviewService'; // THÊM IMPORT NÀY
 
-// ---- Helpers kiểu dữ liệu (khớp với types.ts của Sếp) ----
+// ---- Helpers kiểu dữ liệu ----
 type VariationDetailDTO = {
   variationId: number;
   productId?: string | null;
@@ -41,13 +42,12 @@ type ProductDetailDTO = {
   productUpdatedAt?: string | null;
   categories?: CategoryDetailDTO[] | null;
   variations?: VariationDetailDTO[] | null;
-  // Những field UI dưới đây không có trong DTO => sẽ fallback
   rating?: number;
   reviewCount?: number;
   originalPrice?: number;
 };
 
-// ---- Utils: lấy giá & ảnh từ variations ----
+// ---- Utils ----
 function getMinPrice(p: ProductDetailDTO): number | null {
   const prices = (p.variations ?? [])
     .map(v => (v.variationPrice ?? null))
@@ -70,16 +70,17 @@ function getCategoryNames(p: ProductDetailDTO): string[] {
 export function ShopPage() {
   const { addToWishlist, removeFromWishlist, isInWishlist } = useApp();
   const { addItemToCart } = useCart();
-  // ── State: search / category(multi) / sort
+  
+  // ── State: search / category / sort
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<number[]>([]); // [] = All
   const [sortBy, setSortBy] = useState('featured');
 
-  // Gọi API (đã debounce trong hook)
+  // Gọi API sản phẩm
   const pageSize = 20;
   const {
     data,
-    loading,
+    loading: productsLoading, // Đổi tên để không bị xung đột
     error,
     setPage,
     nextPage,
@@ -90,17 +91,66 @@ export function ShopPage() {
     pageSize,
     search: '',
   });
+  
+  // STATE MỚI ĐỂ LƯU RATING VÀ TRẠNG THÁI LOADING CHUNG
+  const [ratings, setRatings] = useState({});
+  const [loading, setLoading] = useState(true); // State loading tổng hợp
 
-  // an toàn rỗng
+  // An toàn rỗng
   const items: ProductDetailDTO[] = data?.items ?? [];
   const totalPages = data?.totalPages ?? 1;
   const totalCount = data?.totalCount ?? 0;
 
-  // Tính min/max price để UI slider hợp lý (trên trang hiện tại)
-  const pagePrices = items
-    .map(getMinPrice)
-    .filter((x): x is number => typeof x === 'number');
+  // useEffect MỚI: lấy rating sau khi có sản phẩm
+  useEffect(() => {
+    // Luôn bắt đầu loading tổng hợp khi productsLoading bắt đầu
+    setLoading(productsLoading);
+    
+    // Chỉ chạy logic lấy rating khi đã lấy xong sản phẩm và có sản phẩm để xử lý
+    if (productsLoading || items.length === 0) {
+      if (!productsLoading) setLoading(false); // Kết thúc loading nếu không có sản phẩm
+      return;
+    }
 
+    let mounted = true;
+    async function loadRatings() {
+      try {
+        const productIds = items.map(p => p.productId);
+        const summaries = await ReviewService.getProductRatingSummaries(productIds);
+        
+        const ratingsMap = summaries.reduce((acc, summary) => {
+          acc[summary.productId] = {
+            rating: summary.averageRating,
+            reviewCount: summary.reviewCount,
+          };
+          return acc;
+        }, {});
+
+        if (mounted) setRatings(ratingsMap);
+      } catch (e) {
+        console.error("Failed to load ratings for shop page:", e);
+        // Không set lỗi ở đây để trang vẫn hiển thị sản phẩm dù rating lỗi
+      } finally {
+        // Kết thúc loading tổng hợp sau khi đã lấy xong rating
+        if (mounted) setLoading(false);
+      }
+    }
+
+    loadRatings();
+    return () => { mounted = false; };
+  }, [items, productsLoading]); // Phụ thuộc vào `items` và `productsLoading`
+
+  // MERGE DỮ LIỆU SẢN PHẨM VÀ RATING
+  const mergedItems = useMemo(() => {
+    return items.map(p => ({
+      ...p,
+      // Ghi đè rating và reviewCount giả bằng dữ liệu thật nếu có
+      ...(ratings[p.productId] || { rating: p.rating, reviewCount: p.reviewCount }),
+    }));
+  }, [items, ratings]);
+
+  // Tính min/max price để UI slider hợp lý (trên trang hiện tại)
+  const pagePrices = mergedItems.map(getMinPrice).filter((x): x is number => typeof x === 'number');
   const pageMinPrice = pagePrices.length ? Math.floor(Math.min(...pagePrices)) : 0;
   const pageMaxPrice = pagePrices.length ? Math.ceil(Math.max(...pagePrices)) : 200;
 
@@ -114,7 +164,7 @@ export function ShopPage() {
   // Danh sách category (từ trang hiện tại)
   const categoriesOnPage = useMemo(() => {
     const map = new Map<number, string>();
-    items.forEach(p => {
+    mergedItems.forEach(p => { // THAY `items` -> `mergedItems`
       (p.categories ?? []).forEach(c => {
         if (c?.categoryId != null && c?.categoryName) {
           map.set(c.categoryId, c.categoryName);
@@ -125,7 +175,7 @@ export function ShopPage() {
     return [...map.entries()]
       .map(([id, name]) => ({ id, name }))
       .sort((a, b) => a.name.localeCompare(b.name));
-  }, [items]);
+  }, [mergedItems]);
 
   // Helpers cho checkbox
   const isAllCategories = selectedCategoryIds.length === 0;
@@ -144,7 +194,7 @@ export function ShopPage() {
 
   // Lọc client-side (trên page hiện tại): Category (multi) + Price
   const filteredOnPage = useMemo(() => {
-    const filtered = items.filter(p => {
+    const filtered = mergedItems.filter(p => { // THAY `items` -> `mergedItems`
       // Category (OR nhiều category; [] = All)
       const byCat =
         isAllCategories
@@ -167,7 +217,7 @@ export function ShopPage() {
         case 'price-high':
           return (getMinPrice(b) ?? -Infinity) - (getMinPrice(a) ?? -Infinity);
         case 'rating':
-          return (b.rating ?? 0) - (a.rating ?? 0);
+          return (b.rating ?? 0) - (a.rating ?? 0); // Sắp xếp theo rating thật
         case 'newest':
           // Nếu có createdAt: ưu tiên createdAt desc, nếu không dùng productId để tạm đại diện
           return String(b.productId).localeCompare(String(a.productId));
@@ -177,7 +227,7 @@ export function ShopPage() {
     });
 
     return filtered;
-  }, [items, isAllCategories, selectedCategoryIds, priceMax, pageMinPrice, sortBy]);
+  }, [mergedItems, isAllCategories, selectedCategoryIds, priceMax, pageMinPrice, sortBy]);
 
   const showingCount = filteredOnPage.length;
 
@@ -384,7 +434,7 @@ export function ShopPage() {
                           {[...Array(5)].map((_, i) => (
                             <Star
                               key={i}
-                              className={`h-4 w-4 ${i < Math.floor(rating)
+                              className={`h-4 w-4 ${i < Math.round(rating) // SỬA Ở ĐÂY
                                 ? 'fill-yellow-400 text-yellow-400'
                                 : 'text-gray-300'
                                 }`}

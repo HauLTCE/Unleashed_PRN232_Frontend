@@ -10,15 +10,14 @@ import { useApp } from '../contexts/AppContext';
 
 // Real API
 import { getProducts } from '@/services/ProductsService';
+import { ReviewService } from '@/services/reviewService'; // THÊM IMPORT NÀY
 
 // Fallback image when no variationImage is available
 const fallbackImg = (seed) => `https://picsum.photos/seed/${seed}/800/600`;
 
 /* =========================
-   Utils
+   Utils (KHÔNG THAY ĐỔI)
 ========================= */
-
-// Prefer a variation that has an image; then price; else first
 function pickBestVariationPreferImage(variations = []) {
   if (!Array.isArray(variations) || variations.length === 0) return null;
   const withImg = variations.find(v => !!v?.variationImage || !!v?.imageUrl);
@@ -28,12 +27,10 @@ function pickBestVariationPreferImage(variations = []) {
   return variations[0];
 }
 
-// Always take image from variation (fallback to placeholder)
 function getVarImageStrict(v, productId) {
   return v?.variationImage || v?.imageUrl || fallbackImg(productId);
 }
 
-// Price helper (VND symbol; UI labels stay in English)
 const formatVND = (value) => {
   if (value == null) return null;
   try {
@@ -44,9 +41,9 @@ const formatVND = (value) => {
 };
 
 /* =========================
-   Map ProductDetailDTO → Card model
+   Map ProductDetailDTO → Card model (SỬA LẠI HÀM NÀY)
 ========================= */
-function mapProductToCard(p) {
+function mapProductToCard(p, ratingsMap = {}) { // Thêm ratingsMap làm tham số
   const id = p?.productId;
   const name = p?.productName ?? 'Untitled product';
 
@@ -56,9 +53,10 @@ function mapProductToCard(p) {
   const image = getVarImageStrict(bestVar, id);
   const price = bestVar?.variationPrice ?? bestVar?.price ?? null;
 
-  // Mock UI rating to keep layout consistent (hide if not needed)
-  const rating = 4.5;
-  const reviewCount = 12;
+  // Lấy rating thật từ ratingsMap
+  const ratingInfo = ratingsMap[id];
+  const rating = ratingInfo?.averageRating ?? 0;
+  const reviewCount = ratingInfo?.reviewCount ?? 0;
 
   return { id, name, image, price, rating, reviewCount, _hasVar: variations.length > 0 };
 }
@@ -69,49 +67,68 @@ function mapProductToCard(p) {
 export function Homepage() {
   const { addToCart, addToWishlist, isInWishlist } = useApp();
 
+  // THAY ĐỔI STATE VÀ LOGIC LOADING
   const [items, setItems] = useState([]);
+  const [ratings, setRatings] = useState({}); // State mới để lưu rating
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState(null);
 
+  // useEffect để lấy sản phẩm và sau đó là rating
   useEffect(() => {
     let mounted = true;
 
-    async function loadProducts() {
+    async function loadData() {
       setLoading(true);
+      setErr(null);
       try {
-        // Pull a reasonable amount; homepage will pick featured subset
+        // Bước 1: Lấy sản phẩm
         const paged = await getProducts({ pageNumber: 1, pageSize: 16 });
-        if (mounted) setItems(paged?.items ?? []);
+        const products = paged?.items ?? [];
+        if (!mounted) return;
+
+        setItems(products);
+
+        // Bước 2: Lấy rating nếu có sản phẩm
+        if (products.length > 0) {
+          const productIds = products.map(p => p.productId);
+          const summaries = await ReviewService.getProductRatingSummaries(productIds);
+          
+          const ratingsMap = summaries.reduce((acc, summary) => {
+            acc[summary.productId] = summary;
+            return acc;
+          }, {});
+
+          if (mounted) setRatings(ratingsMap);
+        }
       } catch (e) {
-        if (mounted) setErr(e?.message ?? 'Failed to load products');
+        if (mounted) setErr(e?.message ?? 'Failed to load data');
       } finally {
         if (mounted) setLoading(false);
       }
     }
 
-    loadProducts();
+    loadData();
     return () => { mounted = false; };
-  }, []);
+  }, []); // Chỉ chạy một lần khi component mount
 
-  // Map to cards (with _hasVar mark)
+  // THAY ĐỔI LOGIC MAP VÀ MEMOIZE
   const cards = useMemo(
-    () => items.map(mapProductToCard),
-    [items]
+    () => items.map(p => mapProductToCard(p, ratings)),
+    [items, ratings] // Phụ thuộc vào cả items và ratings
   );
 
-  // Priority: products WITH variations first; fill remaining from others
+  // CÁC HÀM MEMOIZE KHÁC GIỮ NGUYÊN
   const prioritizedCards = useMemo(() => {
     const withVar = cards.filter(c => c._hasVar);
     const noVar = cards.filter(c => !c._hasVar);
     return [...withVar, ...noVar];
   }, [cards]);
 
-  // Featured = take first 4 from prioritized
   const featuredCards = useMemo(() => prioritizedCards.slice(0, 4), [prioritizedCards]);
 
   return (
     <div className="min-h-screen">
-      {/* Hero Section */}
+      {/* Hero Section (KHÔNG THAY ĐỔI) */}
       <section className="relative h-[70vh] flex items-center justify-center overflow-hidden">
         <div className="absolute inset-0">
           <ImageWithFallback
@@ -137,7 +154,7 @@ export function Homepage() {
         </div>
       </section>
 
-      {/* Promo Strip */}
+      {/* Promo Strip (KHÔNG THAY ĐỔI) */}
       <section className="bg-secondary text-center py-4">
         <p className="text-secondary-foreground">
           <Badge variant="destructive" className="mr-2">NEW</Badge>
@@ -145,7 +162,7 @@ export function Homepage() {
         </p>
       </section>
 
-      {/* Featured Categories */}
+      {/* Featured Categories (KHÔNG THAY ĐỔI) */}
       <section className="py-16 bg-muted/50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
@@ -154,32 +171,15 @@ export function Homepage() {
               Essentials for every mood—curated just for you.
             </p>
           </div>
-
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {[
-              {
-                img: 'https://images.unsplash.com/photo-1746216845602-336ad3a744f7?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080',
-                title: 'Casual Essentials',
-                desc: 'Comfort that meets modern style',
-              },
-              {
-                img: 'https://images.unsplash.com/photo-1715865871494-6bba579c2dc0?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080',
-                title: 'Denim Collection',
-                desc: 'Timeless fits, premium textures',
-              },
-              {
-                img: 'https://images.unsplash.com/photo-1613432539593-bb769c287e08?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080',
-                title: 'Outerwear',
-                desc: 'Layer up for every season',
-              },
+              { img: 'https://images.unsplash.com/photo-1746216845602-336ad3a744f7?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080', title: 'Casual Essentials', desc: 'Comfort that meets modern style' },
+              { img: 'https://images.unsplash.com/photo-1715865871494-6bba579c2dc0?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080', title: 'Denim Collection', desc: 'Timeless fits, premium textures' },
+              { img: 'https://images.unsplash.com/photo-1613432539593-bb769c287e08?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080', title: 'Outerwear', desc: 'Layer up for every season' },
             ].map((c, idx) => (
               <Card key={idx} className="group overflow-hidden border-0 shadow-lg hover:shadow-xl transition-all duration-300">
                 <CardContent className="p-0 relative">
-                  <ImageWithFallback
-                    src={c.img}
-                    alt={c.title}
-                    className="w-full h-80 object-cover group-hover:scale-105 transition-transform duration-300"
-                  />
+                  <ImageWithFallback src={c.img} alt={c.title} className="w-full h-80 object-cover group-hover:scale-105 transition-transform duration-300" />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
                   <div className="absolute bottom-6 left-6 text-white">
                     <h3 className="text-2xl font-semibold mb-2">{c.title}</h3>
@@ -198,7 +198,7 @@ export function Homepage() {
         </div>
       </section>
 
-      {/* Featured Products (prioritize products WITH variations) */}
+      {/* Featured Products */}
       <section className="py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
@@ -225,18 +225,8 @@ export function Homepage() {
                     <Card key={product.id} className="group overflow-hidden border hover:shadow-lg transition-all duration-300">
                       <CardContent className="p-0">
                         <div className="relative">
-                          <ImageWithFallback
-                            src={product.image}
-                            alt={product.name}
-                            className="w-full h-64 object-cover group-hover:scale-105 transition-transform duration-300"
-                          />
-                          <Button
-                            variant="secondary"
-                            size="sm"
-                            className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity"
-                            onClick={() => addToWishlist?.(product.id)}
-                            aria-label="Add to wishlist"
-                          >
+                          <ImageWithFallback src={product.image} alt={product.name} className="w-full h-64 object-cover group-hover:scale-105 transition-transform duration-300" />
+                          <Button variant="secondary" size="sm" className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => addToWishlist?.(product.id)} aria-label="Add to wishlist">
                             {isInWishlist?.(product.id) ? '♥' : '♡'}
                           </Button>
                         </div>
@@ -248,19 +238,20 @@ export function Homepage() {
                             </h3>
                           </Link>
 
-                          {/* Rating (optional visual) */}
+                          {/* SỬA LẠI LOGIC HIỂN THỊ SAO */}
                           <div className="flex items-center mb-2">
                             <div className="flex items-center">
                               {[...Array(5)].map((_, i) => (
                                 <Star
                                   key={i}
-                                  className={`h-4 w-4 ${i < Math.floor(product.rating) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}`}
+                                  className={`h-4 w-4 ${i < Math.round(product.rating) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}`}
                                 />
                               ))}
                             </div>
                             <span className="text-sm text-muted-foreground ml-2">({product.reviewCount})</span>
                           </div>
 
+                          {/* PHẦN CÒN LẠI CỦA CARD KHÔNG THAY ĐỔI */}
                           <div className="flex items-center justify-between">
                             <div className="flex items-center space-x-2">
                               {product.price != null ? (
@@ -271,11 +262,7 @@ export function Homepage() {
                                 <span className="text-sm text-muted-foreground">Contact for price</span>
                               )}
                             </div>
-                            <Button
-                              size="sm"
-                              onClick={() => addToCart?.(product.id)}
-                              className="opacity-0 group-hover:opacity-100 transition-opacity"
-                            >
+                            <Button size="sm" onClick={() => addToCart?.(product.id)} className="opacity-0 group-hover:opacity-100 transition-opacity">
                               Add to Cart
                             </Button>
                           </div>
@@ -299,7 +286,7 @@ export function Homepage() {
         </div>
       </section>
 
-      {/* Newsletter */}
+      {/* Newsletter (KHÔNG THAY ĐỔI) */}
       <section className="bg-primary text-primary-foreground py-16">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h2 className="text-3xl font-bold mb-4">Stay in the Loop</h2>
@@ -307,11 +294,7 @@ export function Homepage() {
             Be the first to know about new arrivals, exclusive offers, and style tips.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 max-w-md mx-auto">
-            <input
-              type="email"
-              placeholder="Enter your email"
-              className="flex-1 px-4 py-3 rounded-lg text-foreground"
-            />
+            <input type="email" placeholder="Enter your email" className="flex-1 px-4 py-3 rounded-lg text-foreground" />
             <Button variant="secondary" size="lg">Subscribe</Button>
           </div>
         </div>
