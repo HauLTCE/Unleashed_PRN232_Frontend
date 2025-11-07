@@ -34,8 +34,8 @@ export function CartPage() {
     return allCartItems.reduce((total, item) => total + (item.variation.variationPrice * item.quantity), 0);
   }, [allCartItems]);
 
-  const shipping = subtotal > 2000000 ? 0 : 30000;
-  const tax = subtotal * 0.08;
+  const shipping = subtotal > 200000 ? 0 : 30000;
+  const tax = subtotal * 0.05;
   const total = subtotal + shipping + tax;
 
   /**
@@ -213,12 +213,12 @@ export function CartPage() {
                   <span>{shipping === 0 ? <span className="text-green-600">Miễn phí</span> : formatVND(shipping)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span>Thuế (8%)</span>
+                  <span>Thuế (5%)</span>
                   <span>{formatVND(tax)}</span>
                 </div>
-                {subtotal > 0 && subtotal < 2000000 && (
+                {subtotal > 0 && subtotal < 200000 && (
                   <div className="text-sm text-muted-foreground p-3 bg-muted rounded-lg">
-                    Mua thêm {formatVND(2000000 - subtotal)} để được miễn phí vận chuyển!
+                    Mua thêm {formatVND(200000 - subtotal)} để được miễn phí vận chuyển!
                   </div>
                 )}
                 <div className="border-t pt-4">
