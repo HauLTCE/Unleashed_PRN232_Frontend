@@ -1,93 +1,94 @@
-import { useState, useEffect, useCallback } from 'react';
-import { orderService } from '../../services/orderService'; // Giả sử service ở đường dẫn này
+import { useCallback, useEffect, useState } from 'react';
+import { orderService } from '../../services/OrderService'; // Điều chỉnh đường dẫn
 
 /**
- * Hook để lấy và quản lý một đơn hàng cụ thể (by ID).
- * @param {string} orderId - ID của đơn hàng cần lấy.
+ * Hook để quản lý chi tiết một đơn hàng duy nhất (cho trang OrderDetailPage).
+ * @param {string} orderId - ID của đơn hàng cần quản lý.
  */
 export const useOrder = (orderId) => {
     const [order, setOrder] = useState(null);
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(true); // Bắt đầu loading ngay
     const [error, setError] = useState(null);
 
-    // 1. Fetch chi tiết đơn hàng
-    useEffect(() => {
-        // Không fetch nếu không có orderId
+    // Hàm tải lại dữ liệu của đơn hàng
+    const fetchOrderDetails = useCallback(async () => {
         if (!orderId) {
             setLoading(false);
+            setError("Order ID is missing.");
             return;
         }
-
-        const fetchOrder = async () => {
-            setLoading(true);
-            setError(null);
-            try {
-                // Giả sử bạn có hàm getOrderById trong service
-                const data = await orderService.getOrderById(orderId);
-                setOrder(data);
-            } catch (err) {
-                console.error("Failed to fetch order:", err);
-                setError("Could not load order data.");
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        fetchOrder();
-    }, [orderId]); // Chạy lại khi orderId thay đổi
-
-    // 2. Hàm để hủy đơn hàng
-    const cancelThisOrder = useCallback(async () => {
-        if (!orderId) return false;
-
         setLoading(true);
         setError(null);
         try {
-            // Giả sử bạn có hàm cancelOrder trong service
-            await orderService.cancelOrder(orderId);
-
-            // Fetch lại dữ liệu để cập nhật UI
-            const data = await orderService.getOrderById(orderId);
-            setOrder(data);
-            return true;
+            const result = await orderService.getOrderById(orderId);
+            setOrder(result);
         } catch (err) {
-            const errorMessage = err.response?.data?.message || err.message || "Failed to cancel order.";
-            setError(errorMessage);
-            console.error(errorMessage);
-            return false;
-        } finally {
-            setLoading(false);
-        }
-    }, [orderId]); // Dùng useCallback
-
-    // 3. Hàm để Staff duyệt đơn hàng
-    const reviewThisOrder = useCallback(async (isApproved) => {
-        if (!orderId) return false;
-
-        setLoading(true);
-        setError(null);
-        try {
-            // Giả sử bạn có hàm reviewOrder trong service
-            await orderService.reviewOrder(orderId, isApproved); // DTO { isApproved: true/false }
-
-            // Fetch lại dữ liệu để cập nhật UI
-            const data = await orderService.getOrderById(orderId);
-            setOrder(data);
-            return true;
-        } catch (err) {
-            const errorMessage = err.response?.data?.message || err.message || "Failed to review order.";
-            setError(errorMessage);
-            console.error(errorMessage);
-            return false;
+            setError(err.message);
         } finally {
             setLoading(false);
         }
     }, [orderId]);
+
+    // Tự động fetch dữ liệu khi component mount hoặc orderId thay đổi
+    useEffect(() => {
+        fetchOrderDetails();
+    }, [fetchOrderDetails]);
+
+    /**
+     * Duyệt hoặc từ chối đơn hàng.
+     * @param {boolean} isApproved - True để duyệt (Processing), false để từ chối (Denied).
+     */
+    const reviewThisOrder = useCallback(async (isApproved) => {
+        const newStatusId = isApproved ? 2 : 7; // 2: Processing, 7: Denied
+        try {
+            await orderService.reviewOrder(orderId, newStatusId);
+            await fetchOrderDetails(); // Tải lại dữ liệu sau khi cập nhật thành công
+        } catch (err) {
+            setError(err.message); // Hiển thị lỗi nếu có
+            throw err;
+        }
+    }, [orderId, fetchOrderDetails]);
+
+    /**
+     * Hủy đơn hàng.
+     */
+    const cancelThisOrder = useCallback(async () => {
+        try {
+            await orderService.cancelOrder(orderId);
+            await fetchOrderDetails(); // Tải lại dữ liệu
+        } catch (err) {
+            setError(err.message);
+            throw err;
+        }
+    }, [orderId, fetchOrderDetails]);
+
+    const shipThisOrder = useCallback(async () => {
+        try {
+            await orderService.shipOrder(orderId);
+            await fetchOrderDetails();
+        } catch (err) {
+            setError(err.message);
+            throw err;
+        }
+    }, [orderId, fetchOrderDetails]);
+
+    const confirmReceivedOrder = useCallback(async () => {
+        try {
+            await orderService.confirmOrderReceived(orderId);
+            await fetchOrderDetails(); // tải lại dữ liệu
+        } catch (err) {
+            setError(err.message);
+            throw err;
+        }
+    }, [orderId, fetchOrderDetails]);
+
     return {
         order,
         loading,
         error,
+        reviewThisOrder,
         cancelThisOrder,
-        reviewThisOrder
+        shipThisOrder,
+        confirmReceivedOrder,
     };
 };

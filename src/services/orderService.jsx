@@ -80,7 +80,7 @@ const getMyOrders = async (pageNumber = 1, pageSize = 10) => {
 
 
 /**
- * Kiểm tra
+ * Kiểm tra số lượng sản phẩm trong kho.
  * @param {object} createOrderDto - DTO chứa thông tin sản phẩm cần kiểm tra.
  * @returns {Promise<any>} Thông báo từ server.
  */
@@ -124,9 +124,9 @@ const cancelOrder = async (orderId) => {
 };
 
 /**
- * Duyệt hoặc từ chối đơn hàng (dành cho Staff/Admin).
+ * Duyệt hoặc cập nhật trạng thái đơn hàng (dành cho Staff/Admin).
  * @param {string} orderId - GUID của đơn hàng.
- * @param {boolean} isApproved - True nếu duyệt, false nếu từ chối.
+ * @param {number} orderStatus - Trạng thái mới của đơn hàng.
  * @returns {Promise<any>} Thông báo từ server.
  */
 const reviewOrder = async (orderId, orderStatus) => {
@@ -140,6 +140,53 @@ const reviewOrder = async (orderId, orderStatus) => {
 };
 
 /**
+ * Người dùng xác nhận đã nhận được hàng.
+ * @param {string} orderId - GUID của đơn hàng.
+ * @returns {Promise<any>} Thông báo từ server.
+ */
+const confirmOrderReceived = async (orderId) => {
+    try {
+        const response = await apiClient.put(`${ORDER_API_PATH}/${orderId}/confirm-receipt`);
+        return response.data;
+    } catch (error) {
+        handleAxiosError(error);
+    }
+};
+
+/**
+ * Nhân viên chuyển trạng thái đơn hàng sang "Đang giao".
+ * @param {string} orderId - GUID của đơn hàng.
+ * @returns {Promise<any>} Thông báo từ server.
+ */
+const shipOrder = async (orderId) => {
+    try {
+        // Endpoint này không yêu cầu body, chỉ cần gửi request PUT
+        const response = await apiClient.put(`${ORDER_API_PATH}/${orderId}/ship`);
+        return response.data;
+    } catch (error) {
+        handleAxiosError(error);
+    }
+};
+
+/**
+ * Lấy các đơn hàng hợp lệ để người dùng đánh giá cho một sản phẩm cụ thể.
+ * @param {string} userId - GUID của người dùng.
+ * @param {string} productId - GUID của sản phẩm.
+ * @returns {Promise<any>} Dữ liệu trả về từ server.
+ */
+const getEligibleOrdersForReview = async (userId, productId) => {
+    try {
+        const response = await apiClient.get(`${ORDER_API_PATH}/user/${userId}/eligible-for-review`, {
+            params: { productId }
+        });
+        return response.data;
+    } catch (error) {
+        handleAxiosError(error);
+    }
+};
+
+
+/**
  * Export đối tượng service chứa tất cả các hàm.
  */
 export const orderService = {
@@ -150,5 +197,7 @@ export const orderService = {
     createOrder,
     cancelOrder,
     reviewOrder,
+    confirmOrderReceived, // Mới thêm
+    shipOrder, // Mới thêm
+    getEligibleOrdersForReview, // Mới thêm
 };
-

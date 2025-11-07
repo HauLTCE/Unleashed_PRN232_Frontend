@@ -1,19 +1,19 @@
-import React, { useEffect, useRef, useState } from "react";
-import { useSearchParams, useNavigate, Link } from "react-router-dom";
-import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Button } from "../components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
-import { Input } from "../components/ui/input";
-import { Label } from "../components/ui/label";
+import { useEffect, useRef, useState } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { toast } from "sonner";
 import { Avatar, AvatarFallback, AvatarImage } from "../components/ui/avatar";
 import { Badge } from "../components/ui/badge";
+import { Button } from "../components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
+import { Input } from "../components/ui/input";
+import { Label } from "../components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
+import { useNotificationUsers } from "../hooks/NotificationUser/useNotificationUsers";
+import { useMyOrders } from "../hooks/Order/useMyOrders";
 import { useAuth } from "../hooks/User/useAuth";
 import { useUser } from "../hooks/User/useUser";
 import { useImageUpload } from "../hooks/useImageUpload";
-import { useNotificationUsers } from "../hooks/NotificationUser/useNotificationUsers";
-import { useMyOrders } from "../hooks/Order/useMyOrders";
 
 
 export function AccountPage() {
@@ -33,7 +33,6 @@ export function AccountPage() {
     setPageNumber: setOrdersPageNum,
     refresh: refreshOrders
   } = useMyOrders();
-
 
   const [selectedNotification, setSelectedNotification] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -261,11 +260,14 @@ export function AccountPage() {
                 <p className="text-center py-8">Loading orders...</p>
               ) : ordersError ? (
                 <p className="text-center text-red-500 py-8">{ordersError}</p>
-              ) : orders.length === 0 ? (
+
+                // ✅ CHANGE: Add a check for !orders before checking its length
+              ) : !orders || orders.length === 0 ? (
                 <p className="text-center text-muted-foreground py-8">You have no orders yet.</p>
               ) : (
                 <>
                   <div className="space-y-4" id="ordersList">
+                    {/* This .map() call is now safe */}
                     {orders.map((o) => (
                       <Link
                         to={`/order/${o.orderId}`}
@@ -280,14 +282,14 @@ export function AccountPage() {
                         </div>
 
                         <div className="text-right">
-                          <p className="font-semibold">{o.orderTotalAmount?.toFixed(2)}đ</p>
+                          <p className="font-semibold">{o.orderTotalAmount?.toLocaleString()}đ</p>
                           <Badge variant="outline">{o.orderStatusName}</Badge>
                         </div>
                       </Link>
                     ))}
                   </div>
 
-                  {/* 🔥 PAGINATION */}
+                  {/* Pagination */}
                   <div className="flex justify-between items-center mt-6 pt-4 border-t">
                     <Button
                       variant="outline"
@@ -299,11 +301,9 @@ export function AccountPage() {
                     >
                       Previous
                     </Button>
-
                     <span className="text-sm text-muted-foreground">
                       Page {ordersPageNum} of {ordersTotalPages}
                     </span>
-
                     <Button
                       variant="outline"
                       disabled={ordersPageNum >= ordersTotalPages}

@@ -1,12 +1,12 @@
+import { ArrowLeft, CheckCircle, Loader2, Package, Truck, XCircle } from 'lucide-react';
 import React from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { AdminLayout } from '../components/AdminLayout';
-import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
-import { Button } from '../../components/ui/button';
+import { Link, useParams } from 'react-router-dom';
 import { Badge } from '../../components/ui/badge';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui/table';
+import { Button } from '../../components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Separator } from '../../components/ui/separator';
-import { ArrowLeft, Package, Truck, CheckCircle, Loader2, XCircle } from 'lucide-react';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui/table';
+import { AdminLayout } from '../components/AdminLayout';
 // Import hook useOrder
 import { useOrder } from '../../hooks/Order/useOrder'; // Giả sử hook ở đường dẫn này
 // Cập nhật: Import useUser
@@ -16,7 +16,7 @@ export default function OrderDetailPage() {
   const { id } = useParams();
 
   // 1. Sử dụng hook useOrder
-  const { order, loading, error, cancelThisOrder, reviewThisOrder } = useOrder(id);
+  const { order, loading, error, cancelThisOrder, reviewThisOrder, shipThisOrder, confirmReceivedOrder } = useOrder(id);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
   // Cập nhật: Lấy thông tin người dùng
@@ -357,6 +357,28 @@ export default function OrderDetailPage() {
                   </>
                 )}
 
+                {(order.orderStatusId === 3 || order.orderStatusName?.toLowerCase() === 'shipping') && (
+                  <Button
+                    className="w-full bg-green-600 hover:bg-green-700"
+                    onClick={async () => {
+                      if (window.confirm('Bạn chắc chắn đã nhận được hàng này?')) {
+                        setIsSubmitting(true);
+                        try {
+                          await confirmReceivedOrder();
+                        } catch (error) {
+                          console.error('Error confirming receipt:', error);
+                        } finally {
+                          setIsSubmitting(false);
+                        }
+                      }
+                    }}
+                    disabled={isSubmitting}
+                  >
+                    {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                    Xác nhận đã nhận hàng
+                  </Button>
+                )}
+
                 {isCancelable && (
                   <Button
                     className="w-full"
@@ -373,6 +395,16 @@ export default function OrderDetailPage() {
                   <p className="text-sm text-muted-foreground text-center">
                     This order can no longer be modified.
                   </p>
+                )}
+                {order.orderStatusName?.toLowerCase() === 'processing' && (
+                  <Button
+                    className="w-full"
+                    onClick={shipThisOrder}
+                    disabled={isSubmitting}
+                  >
+                    {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                    Mark as Shipping
+                  </Button>
                 )}
               </CardContent>
             </Card>
