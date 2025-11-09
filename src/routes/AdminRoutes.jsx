@@ -22,7 +22,6 @@ import { DiscountsPage } from '../admin/pages/DiscountsPage';
 import StockPage from '../admin/pages/StockPage';
 import { CustomersPage } from '../admin/pages/CustomersPage';
 import { SuppliersPage } from '../admin/pages/SuppliersPage';
-import { ReviewsPage } from '../admin/pages/ReviewsPage';
 import StockDetailPage from '../admin/pages/StockDetailPage';
 import StockImportPage from '../admin/pages/StockImportPage';
 import TransactionsPage from '../admin/pages/TransactionsPage';
@@ -31,6 +30,7 @@ import { CategoriesPage } from '../admin/pages/CategoriesPage';
 import { ProductCreatePage } from '../admin/pages/ProductCreatePage';
 import { ProductEditPage } from '../admin/pages/ProductEditPage';
 import OrderDetailPage from '../admin/pages/OrderDetailPage';
+import { ReviewsPage } from '../admin/pages/ReviewsPage';
 
 const AdminLayout = () => {
 

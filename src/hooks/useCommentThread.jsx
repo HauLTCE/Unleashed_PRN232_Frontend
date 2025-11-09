@@ -6,7 +6,8 @@ import {
   deleteComment,
   getCommentById,
   getCommentDescendants,
-} from '@/services/CommentService'; 
+} from '@/services/CommentService';
+import userService from '../services/userService';
 // Sếp chỉnh lại path cho đúng nhé
 
 /**
@@ -19,6 +20,47 @@ export function useCommentThread(rootCommentId) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
+  const attachUserInfoBatch = async (rootComment, descendants) => {
+    // 1. Collect all unique userIds from root + descendants + nested childComments
+    const userIds = new Set();
+
+    const collectIds = (comment) => {
+      if (!comment) return;
+      userIds.add(comment.userId);
+      comment.childComments?.forEach(collectIds);
+    };
+
+    collectIds(rootComment);
+    descendants.forEach(collectIds);
+    console.log(userIds)
+    // 2. Fetch all user info at once
+    const userInfos = await userService.getUserReviewInfos([...userIds]); // expects array
+
+    // 3. Map userId -> info for quick lookup
+    const userMap = Object.fromEntries(
+      userInfos.map((u) => [u.userId, u])
+    );
+
+    // 4. Recursively attach user info
+    const enrich = (comment) => {
+      if (!comment) return comment;
+      const userInfo = userMap[comment.userId];
+      const enrichedComment = {
+        ...comment,
+        userFullname: userInfo?.userFullname || comment.userFullname,
+        userImage: userInfo?.userImage || comment.userImage,
+        childComments: comment.childComments?.map(enrich) || [],
+      };
+      return enrichedComment;
+    };
+
+    const enrichedRoot = enrich(rootComment);
+    const enrichedDescendants = descendants.map(enrich);
+
+    return { enrichedRoot, enrichedDescendants };
+  };
+
+
   const loadThread = useCallback(async () => {
     if (!rootCommentId) return;
 
@@ -26,13 +68,47 @@ export function useCommentThread(rootCommentId) {
     setError(null);
 
     try {
+      // 1. Fetch root comment and all descendants
       const [rootRes, descRes] = await Promise.all([
         getCommentById(rootCommentId),
         getCommentDescendants(rootCommentId),
       ]);
 
-      setRootComment(rootRes.data ?? rootRes);
-      setDescendants(descRes.data ?? descRes);
+      const root = rootRes.data ?? rootRes;
+      const descendantsData = descRes.data ?? descRes;
+
+      // 2. Collect all unique userIds
+      const userIds = new Set();
+      const collectIds = (comment) => {
+        if (!comment) return;
+        userIds.add(comment.userId);
+        comment.childComments?.forEach(collectIds);
+      };
+
+      collectIds(root);
+      descendantsData.forEach(collectIds);
+
+      // 3. Fetch all user info in one call
+      const userInfos = await userService.getUserReviewInfos([...userIds]);
+      const userMap = Object.fromEntries(userInfos.map((u) => [u.userId, u]));
+
+      // 4. Recursively attach user info
+      const enrich = (comment) => {
+        if (!comment) return comment;
+        const userInfo = userMap[comment.userId];
+        return {
+          ...comment,
+          userFullname: userInfo?.userFullname || comment.userFullname,
+          userImage: userInfo?.userImage || comment.userImage,
+          childComments: comment.childComments?.map(enrich) || [],
+        };
+      };
+
+      const enrichedRoot = enrich(root);
+      const enrichedDescendants = descendantsData.map(enrich);
+
+      setRootComment(enrichedRoot);
+      setDescendants(enrichedDescendants);
     } catch (err) {
       console.error('Failed to load comment thread', err);
       setError(err);
@@ -45,12 +121,11 @@ export function useCommentThread(rootCommentId) {
     loadThread();
   }, [loadThread]);
 
-  // Thêm comment mới hoặc reply
   const addNewComment = useCallback(
     async (commentData) => {
       try {
         const res = await addComment(commentData);
-        await loadThread(); // load lại thread
+        await loadThread(); // reload thread
         return res;
       } catch (err) {
         console.error('Failed to add comment', err);
@@ -94,6 +169,7 @@ export function useCommentThread(rootCommentId) {
     loading,
     error,
     reload: loadThread,
+    attachUserInfoBatch,
     addNewComment,
     editComment,
     removeComment,
