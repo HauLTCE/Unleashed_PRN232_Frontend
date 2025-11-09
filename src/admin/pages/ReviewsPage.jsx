@@ -119,7 +119,7 @@ const AdminReplyBox = ({ reviewId, parentCommentId, addNewComment, onSent }) => 
       <Button
         onClick={handleAddReply}
         disabled={sending || !content.trim()}
-        className="mt-2 px-4 py-2 bg-blue-600 text-black rounded-md disabled:opacity-50 hover:text-white transition-colors"
+        className="mt-2 px-4 py-2 bg-blue-600 text-white rounded-md disabled:opacity-50 hover:text-white transition-colors"
       >
         {sending ? 'Sending...' : 'Send Reply'}
       </Button>
@@ -267,7 +267,8 @@ export function ReviewsPage() {
                   <div className="space-y-2">
                     {/* Root Comment */}
                     <div className="pl-0">
-                      <p className="font-medium">
+                      <p className="font-medium">{rootComment?.userFullname || selectedReview.userFullname}</p>
+                      <p className="text-sm text-muted-foreground">
                         {rootComment?.commentContent || selectedReview.reviewContent || "No comment found."}
                       </p>
                     </div>
@@ -275,7 +276,16 @@ export function ReviewsPage() {
                     {/* Child comments */}
                     {descendants.map((c) => (
                       <div key={c.commentId} className="pl-4 border-l ml-2 my-2 space-y-1">
+                        <p className="font-medium">{c.userFullname}</p>
                         <p className="text-sm text-muted-foreground">{c.commentContent}</p>
+
+                        {/* Nested replies if any */}
+                        {c.childComments?.length > 0 && c.childComments.map((child) => (
+                          <div key={child.commentId} className="pl-4 border-l ml-2 mt-1 space-y-1">
+                            <p className="font-medium">{child.userFullname}</p>
+                            <p className="text-sm text-muted-foreground">{child.commentContent}</p>
+                          </div>
+                        ))}
                       </div>
                     ))}
                   </div>
