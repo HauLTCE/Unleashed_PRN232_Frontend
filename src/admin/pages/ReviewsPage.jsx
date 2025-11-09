@@ -8,14 +8,7 @@ import { Loader2, Star } from 'lucide-react';
 import { useDashboardReviews } from '../../hooks/Review/useDashboardReviews';
 import { useProduct } from '../../hooks/useProduct';
 import { useCommentThread } from '../../hooks/useCommentThread';
-
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from '../../components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
 import { Button } from '../../components/ui/button';
 
 const ITEMS_PER_PAGE = 10;
@@ -91,15 +84,13 @@ const AdminReplyBox = ({ reviewId, parentCommentId, addNewComment, onSent }) => 
 
     setSending(true);
     try {
-      // Send reply with correct parentCommentId and reviewId
       await addNewComment({
-        reviewId,           // review this comment belongs to
-        parentCommentId,    // the comment being replied to
+        reviewId,
+        parentCommentId,
         commentContent: content,
       });
-
-      setContent('');      // Reset textarea
-      if (onSent) onSent(); // Optional callback to refresh UI
+      setContent('');
+      if (onSent) onSent();
     } catch (err) {
       console.error('Failed to send reply', err);
     } finally {
@@ -119,7 +110,7 @@ const AdminReplyBox = ({ reviewId, parentCommentId, addNewComment, onSent }) => 
       <Button
         onClick={handleAddReply}
         disabled={sending || !content.trim()}
-        className="mt-2 px-4 py-2 bg-blue-600 text-white rounded-md disabled:opacity-50 hover:text-white transition-colors"
+        className="mt-2 px-4 py-2 bg-blue-600 text-black rounded-md disabled:opacity-50 hover:text-white transition-colors"
       >
         {sending ? 'Sending...' : 'Send Reply'}
       </Button>
@@ -127,21 +118,160 @@ const AdminReplyBox = ({ reviewId, parentCommentId, addNewComment, onSent }) => 
   );
 };
 
+const CommentItem = ({ comment, onEdit, onDelete }) => {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editContent, setEditContent] = useState(comment.commentContent);
+  const [saving, setSaving] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false); // <-- new
+
+  const handleSave = async () => {
+    if (!editContent.trim()) return;
+    setSaving(true);
+    try {
+      await onEdit(comment.commentId, { commentContent: editContent });
+      setIsEditing(false);
+    } catch (err) {
+      console.error('Failed to save comment', err);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    try {
+      await onDelete(comment.commentId);
+      setConfirmDelete(false);
+    } catch (err) {
+      console.error('Failed to delete comment', err);
+    }
+  };
+
+  return (
+    <div className="pl-4 border-l ml-2 my-2 space-y-1">
+      <div className="flex justify-between items-start">
+        <div className="flex-1">
+          <p className="font-medium">{comment.userFullname}</p>
+          {isEditing ? (
+            <textarea
+              className="w-full border rounded-md p-1 text-sm mt-1"
+              value={editContent}
+              onChange={(e) => setEditContent(e.target.value)}
+              rows={2}
+            />
+          ) : (
+            <p className="text-sm text-muted-foreground">{comment.commentContent}</p>
+          )}
+        </div>
+
+        <div className="flex gap-2">
+          {isEditing ? (
+            <>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setIsEditing(false)}
+                disabled={saving}
+              >
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                variant="default"
+                onClick={handleSave}
+                disabled={saving}
+              >
+                {saving ? 'Saving...' : 'Save'}
+              </Button>
+            </>
+          ) : confirmDelete ? ( // <-- show confirmation buttons
+            <>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setConfirmDelete(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                variant="destructive"
+                onClick={handleDelete}
+              >
+                Confirm
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setIsEditing(true)}
+              >
+                Edit
+              </Button>
+              <Button
+                size="sm"
+                variant="destructive"
+                onClick={() => setConfirmDelete(true)} // <-- trigger confirmation
+              >
+                Delete
+              </Button>
+            </>
+          )}
+        </div>
+      </div>
+
+      {comment.childComments?.length > 0 &&
+        comment.childComments.map((child) => (
+          <CommentItem
+            key={child.commentId}
+            comment={child}
+            onEdit={onEdit}
+            onDelete={onDelete}
+          />
+        ))}
+    </div>
+  );
+};
 
 
 export function ReviewsPage() {
   const { reviews, total, pagination, loading, error, fetchDashboardReviews } = useDashboardReviews();
   const [currentPage, setCurrentPage] = useState(1);
-
   const [selectedReview, setSelectedReview] = useState(null);
 
-  // Use comment thread hook when a review is selected
-  const { rootComment, descendants, loading: threadLoading, error: threadError, addNewComment } =
-    useCommentThread(selectedReview?.commentId);
+  const {
+    rootComment,
+    descendants,
+    loading: threadLoading,
+    error: threadError,
+    addNewComment,
+    editComment: editCommentThread,
+    removeComment: removeCommentThread,
+    reload: reloadThread,
+  } = useCommentThread(selectedReview?.commentId);
 
   useEffect(() => {
     fetchDashboardReviews(currentPage, ITEMS_PER_PAGE);
   }, [currentPage, fetchDashboardReviews]);
+
+  const handleEditComment = async (commentId, data) => {
+    try {
+      await editCommentThread(commentId, data);
+      await reloadThread();
+    } catch (err) {
+      console.error('Failed to edit comment in modal', err);
+    }
+  };
+
+  const handleDeleteComment = async (commentId) => {
+    try {
+      await removeCommentThread(commentId);
+      await reloadThread();
+    } catch (err) {
+      console.error('Failed to delete comment in modal', err);
+    }
+  };
 
   return (
     <AdminLayout>
@@ -262,7 +392,7 @@ export function ReviewsPage() {
                 {threadLoading ? (
                   <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                 ) : threadError ? (
-                  <p className="text-red-500">{threadError}</p>
+                  <p className="text-red-500">{threadError?.message || String(threadError)}</p>
                 ) : (
                   <div className="space-y-2">
                     {/* Root Comment */}
@@ -273,32 +403,52 @@ export function ReviewsPage() {
                       </p>
                     </div>
 
-                    {/* Child comments */}
-                    {descendants.map((c) => (
-                      <div key={c.commentId} className="pl-4 border-l ml-2 my-2 space-y-1">
-                        <p className="font-medium">{c.userFullname}</p>
-                        <p className="text-sm text-muted-foreground">{c.commentContent}</p>
+                    {/* Latest comment from current user */}
+                    {(() => {
+                      const authUser = JSON.parse(localStorage.getItem('authUser'));
+                      if (!authUser) return null;
 
-                        {/* Nested replies if any */}
-                        {c.childComments?.length > 0 && c.childComments.map((child) => (
-                          <div key={child.commentId} className="pl-4 border-l ml-2 mt-1 space-y-1">
-                            <p className="font-medium">{child.userFullname}</p>
-                            <p className="text-sm text-muted-foreground">{child.commentContent}</p>
-                          </div>
-                        ))}
-                      </div>
-                    ))}
+                      const getNewestUserComment = (comments, userId) => {
+                        let newest = null;
+
+                        const traverse = (commentList) => {
+                          if (!commentList?.length) return;
+
+                          commentList.forEach((c) => {
+                            if (c.userId === userId) {
+                              if (!newest || new Date(c.commentCreatedAt) > new Date(newest.commentCreatedAt)) {
+                                newest = c;
+                              }
+                            }
+                            traverse(c.childComments);
+                          });
+                        };
+
+                        traverse(comments);
+                        return newest;
+                      };
+
+                      const newestUserComment = getNewestUserComment(descendants, authUser);
+
+                      return newestUserComment ? (
+                        <CommentItem
+                          key={newestUserComment.commentId}
+                          comment={newestUserComment}
+                          onEdit={handleEditComment}
+                          onDelete={handleDeleteComment}
+                        />
+                      ) : null;
+                    })()}
                   </div>
                 )}
               </div>
 
-
               {/* Admin Reply Box */}
               <AdminReplyBox
                 reviewId={selectedReview.reviewId}
-                parentCommentId={rootComment?.commentId} // reply is attached to root comment
-                addNewComment={addNewComment}           // from useCommentThread
-                onSent={() => { } /* optional: can reload thread or close modal */}
+                parentCommentId={rootComment?.commentId}
+                addNewComment={addNewComment}
+                onSent={reloadThread}
               />
             </div>
           ) : (
@@ -309,6 +459,6 @@ export function ReviewsPage() {
         </DialogContent>
       </Dialog>
 
-    </AdminLayout >
+    </AdminLayout>
   );
 }
