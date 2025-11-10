@@ -119,15 +119,27 @@ export default function OrderDetailPage() {
     }
   };
 
-  // 5. Tính toán giá trị (dựa trên API response)
-  // Sửa: Đổi 'orderVariationSingles' thành 'orderVariations'
   const items = order.orderVariations || [];
   const subtotal = items.reduce((sum, item) => sum + (item.variationPriceAtPurchase * item.quantity), 0);
-  const taxRate = order.orderTax || 0;
-  const taxAmount = subtotal * taxRate;
+  const taxRate = order.orderTax || 0; // Lấy tỉ lệ thuế từ DTO (0.05)
   const total = order.orderTotalAmount || 0;
-  // Tính toán phí ship (có thể không chính xác 100% nếu có discount)
-  const shippingCost = total - subtotal - taxAmount;
+
+  // Tính ngược lại discount và shipping fee từ total
+  // Giả định: shipping fee được cộng vào sau khi đã tính thuế trên (subtotal - discount)
+  // total = (subtotal - discount) * (1 + taxRate) + shippingFee
+  // Vì không có phí ship trong DTO, ta phải giả định hoặc tính toán. Giả sử STANDARD shipping là 0đ.
+  const shippingFee = order.shippingMethodName?.toUpperCase() === 'STANDARD' ? 0 : 20000; // Giả định phí ship
+
+  // Tính lại tổng tiền trước phí ship
+  const totalBeforeShipping = total - shippingFee;
+  // Tính lại tổng tiền trước thuế
+  const subtotalAfterDiscount = totalBeforeShipping / (1 + taxRate);
+  // Từ đó suy ra discount
+  const discountAmount = subtotal - subtotalAfterDiscount;
+
+  // Tính lại thuế cho chính xác
+  const taxAmount = subtotalAfterDiscount * taxRate;
+
 
   // 6. Xử lý sự kiện Actions
   const handleReview = async (isApproved) => {
@@ -294,36 +306,36 @@ export default function OrderDetailPage() {
 
             {/* Payment Summary (dùng data API) */}
             <Card>
-              <CardHeader>
-                <CardTitle>Payment Summary</CardTitle>
-              </CardHeader>
+              <CardHeader><CardTitle>Payment Summary</CardTitle></CardHeader>
               <CardContent className="space-y-3">
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Subtotal</span>
-                  <span>${subtotal.toFixed(2)}</span>
+                  <span className="text-muted-foreground">SubTotal</span>
+                  <span>{subtotal.toLocaleString('vi-VN')}đ</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Tax ({taxRate * 100}%)</span>
-                  <span>${taxAmount.toFixed(2)}</span>
-                </div>
+                {/* Chỉ hiển thị khi có giảm giá */}
+                {discountAmount > 1 && (
+                  <div className="flex justify-between text-green-600">
+                    <span className="text-muted-foreground">Disount</span>
+                    <span>-{Math.round(discountAmount).toLocaleString('vi-VN')}đ</span>
+                  </div>
+                )}
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Shipping</span>
-                  <span>${shippingCost.toFixed(2)}</span>
+                  <span>{shippingFee > 0 ? `${shippingFee.toLocaleString('vi-VN')}đ` : 'Free'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Tax ({(taxRate * 100).toFixed(0)}%)</span>
+                  <span>{Math.round(taxAmount).toLocaleString('vi-VN')}đ</span>
                 </div>
                 <Separator />
-                _   <div className="flex justify-between font-medium">
+                <div className="flex justify-between font-semibold text-lg">
                   <span>Total</span>
-                  <span>${total.toFixed(2)}</span>
+                  <span>{total.toLocaleString('vi-VN')}đ</span>
                 </div>
-
                 <div className="mt-4 pt-4 border-t">
                   <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Payment Method</span>
+                    <span className="text-muted-foreground">Shipping Method</span>
                     <span>{order.paymentMethodName}</span>
-                  </div>
-                  <div className="flex justify-between text-sm mt-1">
-                    <span className="text-muted-foreground">Transaction ID</span>
-                    <span>{order.orderTransactionReference}</span>
                   </div>
                 </div>
               </CardContent>
@@ -357,27 +369,6 @@ export default function OrderDetailPage() {
                   </>
                 )}
 
-                {(order.orderStatusId === 3 || order.orderStatusName?.toLowerCase() === 'shipping') && (
-                  <Button
-                    className="w-full bg-green-600 hover:bg-green-700"
-                    onClick={async () => {
-                      if (window.confirm('Bạn chắc chắn đã nhận được hàng này?')) {
-                        setIsSubmitting(true);
-                        try {
-                          await confirmReceivedOrder();
-                        } catch (error) {
-                          console.error('Error confirming receipt:', error);
-                        } finally {
-                          setIsSubmitting(false);
-                        }
-                      }
-                    }}
-                    disabled={isSubmitting}
-                  >
-                    {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                    Xác nhận đã nhận hàng
-                  </Button>
-                )}
 
                 {isCancelable && (
                   <Button
