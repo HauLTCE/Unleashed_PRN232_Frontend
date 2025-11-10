@@ -11,24 +11,41 @@ import { useCommentThread } from '../../hooks/useCommentThread';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
 import { Button } from '../../components/ui/button';
 
+// --- Constants ---
 const ITEMS_PER_PAGE = 10;
 
+// --- Helper Functions ---
+
+/**
+ * Formats an ISO date string into a more readable local date.
+ */
 const formatDate = (dateString) => dateString ? new Date(dateString).toLocaleDateString() : 'N/A';
 
+/**
+ * Renders a 5-star rating display.
+ */
 const renderStars = (rating) => {
   if (!rating) return <span className="text-muted-foreground">No rating</span>;
   return (
     <div className="flex items-center">
-      {[...Array(rating)].map((_, i) => <Star key={i} className="h-4 w-4 text-yellow-500 fill-yellow-500" />)}
-      {[...Array(5 - rating)].map((_, i) => <Star key={i} className="h-4 w-4 text-gray-300" />)}
+      {/* Render filled stars */}
+      {[...Array(rating)].map((_, i) => <Star key={`filled-${i}`} className="h-4 w-4 text-yellow-500 fill-yellow-500" />)}
+      {/* Render empty stars */}
+      {[...Array(5 - rating)].map((_, i) => <Star key={`empty-${i}`} className="h-4 w-4 text-gray-300" />)}
     </div>
   );
 };
 
-// Review row component
+// --- Child Components ---
+
+/**
+ * Represents a single row in the reviews table.
+ */
 const ReviewRow = ({ review, onOpenDetail }) => {
+  // Fetch product details for the review
   const { product, loading: productLoading } = useProduct(review.productId);
 
+  // Determine the best image to show (variation, main, or placeholder)
   const variationImage =
     product?.variations?.[0]?.variationImage ||
     product?.mainImage ||
@@ -39,7 +56,12 @@ const ReviewRow = ({ review, onOpenDetail }) => {
     product?.productName || review.productName || "Unknown product";
 
   return (
-    <TableRow className="cursor-pointer hover:bg-muted/40">
+    // ADDED: The onClick handler is now on the entire row.
+    <TableRow
+      className="cursor-pointer hover:bg-muted/40"
+      onClick={() => onOpenDetail(review)}
+    >
+      {/* Customer Cell */}
       <TableCell>
         <div className="flex items-center gap-3">
           <Avatar>
@@ -50,6 +72,7 @@ const ReviewRow = ({ review, onOpenDetail }) => {
         </div>
       </TableCell>
 
+      {/* Product Cell */}
       <TableCell>
         {productLoading ? (
           <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
@@ -65,20 +88,26 @@ const ReviewRow = ({ review, onOpenDetail }) => {
         )}
       </TableCell>
 
-      <TableCell onClick={() => onOpenDetail(review)} className="cursor-pointer">
+      {/* Rating Cell */}
+      {/* REMOVED: The onClick handler and cursor-pointer class were removed from this cell. */}
+      <TableCell>
         {renderStars(review.reviewRating)}
       </TableCell>
 
+      {/* Date Cell */}
       <TableCell>{formatDate(review.commentCreatedAt)}</TableCell>
     </TableRow>
   );
 };
 
-// Admin reply box inside modal
+/**
+ * A form for admins to reply to a review from within the modal.
+ */
 const AdminReplyBox = ({ reviewId, parentCommentId, addNewComment, onSent }) => {
   const [content, setContent] = useState('');
   const [sending, setSending] = useState(false);
 
+  // Handle submitting the reply
   const handleAddReply = async () => {
     if (!content.trim()) return;
 
@@ -90,7 +119,7 @@ const AdminReplyBox = ({ reviewId, parentCommentId, addNewComment, onSent }) => 
         commentContent: content,
       });
       setContent('');
-      if (onSent) onSent();
+      if (onSent) onSent(); // Trigger a reload of the comment thread
     } catch (err) {
       console.error('Failed to send reply', err);
     } finally {
@@ -118,12 +147,17 @@ const AdminReplyBox = ({ reviewId, parentCommentId, addNewComment, onSent }) => 
   );
 };
 
+/**
+ * Displays a single comment and its replies (children) recursively.
+ * Includes logic for editing and deleting.
+ */
 const CommentItem = ({ comment, onEdit, onDelete }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(comment.commentContent);
   const [saving, setSaving] = useState(false);
-  const [confirmDelete, setConfirmDelete] = useState(false); // <-- new
+  const [confirmDelete, setConfirmDelete] = useState(false); // State for delete confirmation
 
+  // Handle saving an edited comment
   const handleSave = async () => {
     if (!editContent.trim()) return;
     setSaving(true);
@@ -137,10 +171,11 @@ const CommentItem = ({ comment, onEdit, onDelete }) => {
     }
   };
 
+  // Handle deleting a comment
   const handleDelete = async () => {
     try {
       await onDelete(comment.commentId);
-      setConfirmDelete(false);
+      setConfirmDelete(false); // Close confirmation on success
     } catch (err) {
       console.error('Failed to delete comment', err);
     }
@@ -149,6 +184,7 @@ const CommentItem = ({ comment, onEdit, onDelete }) => {
   return (
     <div className="pl-4 border-l ml-2 my-2 space-y-1">
       <div className="flex justify-between items-start">
+        {/* Comment Content */}
         <div className="flex-1">
           <p className="font-medium">{comment.userFullname}</p>
           {isEditing ? (
@@ -163,8 +199,10 @@ const CommentItem = ({ comment, onEdit, onDelete }) => {
           )}
         </div>
 
+        {/* Action Buttons (Edit/Delete/Save/Cancel) */}
         <div className="flex gap-2">
           {isEditing ? (
+            // Edit/Save buttons
             <>
               <Button
                 size="sm"
@@ -183,7 +221,8 @@ const CommentItem = ({ comment, onEdit, onDelete }) => {
                 {saving ? 'Saving...' : 'Save'}
               </Button>
             </>
-          ) : confirmDelete ? ( // <-- show confirmation buttons
+          ) : confirmDelete ? (
+            // Delete confirmation buttons
             <>
               <Button
                 size="sm"
@@ -201,6 +240,7 @@ const CommentItem = ({ comment, onEdit, onDelete }) => {
               </Button>
             </>
           ) : (
+            // Default Edit/Delete buttons
             <>
               <Button
                 size="sm"
@@ -212,7 +252,7 @@ const CommentItem = ({ comment, onEdit, onDelete }) => {
               <Button
                 size="sm"
                 variant="destructive"
-                onClick={() => setConfirmDelete(true)} // <-- trigger confirmation
+                onClick={() => setConfirmDelete(true)} // Show confirmation
               >
                 Delete
               </Button>
@@ -221,6 +261,7 @@ const CommentItem = ({ comment, onEdit, onDelete }) => {
         </div>
       </div>
 
+      {/* Render child comments recursively */}
       {comment.childComments?.length > 0 &&
         comment.childComments.map((child) => (
           <CommentItem
@@ -235,11 +276,16 @@ const CommentItem = ({ comment, onEdit, onDelete }) => {
 };
 
 
+// --- Main Page Component ---
+
 export function ReviewsPage() {
+  // State for review list and pagination
   const { reviews, total, pagination, loading, error, fetchDashboardReviews } = useDashboardReviews();
   const [currentPage, setCurrentPage] = useState(1);
+  // State for the modal
   const [selectedReview, setSelectedReview] = useState(null);
 
+  // State for the comment thread inside the modal
   const {
     rootComment,
     descendants,
@@ -249,12 +295,14 @@ export function ReviewsPage() {
     editComment: editCommentThread,
     removeComment: removeCommentThread,
     reload: reloadThread,
-  } = useCommentThread(selectedReview?.commentId);
+  } = useCommentThread(selectedReview?.commentId); // Hook depends on the selected review
 
+  // Fetch reviews when the page changes
   useEffect(() => {
     fetchDashboardReviews(currentPage, ITEMS_PER_PAGE);
   }, [currentPage, fetchDashboardReviews]);
 
+  // Wrapper function to edit a comment and reload the thread
   const handleEditComment = async (commentId, data) => {
     try {
       await editCommentThread(commentId, data);
@@ -264,6 +312,7 @@ export function ReviewsPage() {
     }
   };
 
+  // Wrapper function to delete a comment and reload the thread
   const handleDeleteComment = async (commentId) => {
     try {
       await removeCommentThread(commentId);
@@ -276,11 +325,13 @@ export function ReviewsPage() {
   return (
     <AdminLayout>
       <div className="space-y-6">
+        {/* Page Header */}
         <div>
           <h1 className="text-3xl font-bold">Customer Reviews</h1>
           <p className="text-muted-foreground">Monitor and manage all product reviews.</p>
         </div>
 
+        {/* Reviews Table Card */}
         <Card>
           <CardHeader>
             <CardTitle>All Reviews ({total})</CardTitle>
@@ -315,13 +366,19 @@ export function ReviewsPage() {
                     </TableCell>
                   </TableRow>
                 ) : (
+                  // Render all review rows
                   reviews.map((review) => (
-                    <ReviewRow key={review.reviewId} review={review} onOpenDetail={setSelectedReview} />
+                    <ReviewRow
+                      key={review.reviewId}
+                      review={review}
+                      onOpenDetail={setSelectedReview} // Pass the state setter to the row
+                    />
                   ))
                 )}
               </TableBody>
             </Table>
 
+            {/* Pagination Controls */}
             {pagination.totalPages > 1 && (
               <div className="mt-6">
                 <Pagination>
@@ -393,9 +450,10 @@ export function ReviewsPage() {
                   <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                 ) : threadError ? (
                   <p className="text-red-500">{threadError?.message || String(threadError)}</p>
+
                 ) : (
                   <div className="space-y-2">
-                    {/* Root Comment */}
+                    {/* Root Comment (the review itself) */}
                     <div className="pl-0">
                       <p className="font-medium">{rootComment?.userFullname || selectedReview.userFullname}</p>
                       <p className="text-sm text-muted-foreground">
@@ -403,11 +461,12 @@ export function ReviewsPage() {
                       </p>
                     </div>
 
-                    {/* Latest comment from current user */}
+                    {/* Logic to find and display the admin's most recent reply for editing */}
                     {(() => {
                       const authUser = JSON.parse(localStorage.getItem('authUser'));
                       if (!authUser) return null;
 
+                      // Helper to find the newest comment by the current admin user
                       const getNewestUserComment = (comments, userId) => {
                         let newest = null;
 
@@ -416,7 +475,7 @@ export function ReviewsPage() {
 
                           commentList.forEach((c) => {
                             if (c.userId === userId) {
-                              if (!newest || new Date(c.commentCreatedAt) > new Date(newest.commentCreatedAt)) {
+                              if (!newest || new Date(c.commentCreatedAt) > new Date(newMest.commentCreatedAt)) {
                                 newest = c;
                               }
                             }
@@ -430,6 +489,7 @@ export function ReviewsPage() {
 
                       const newestUserComment = getNewestUserComment(descendants, authUser);
 
+                      // If a comment from the admin exists, render it with edit/delete controls
                       return newestUserComment ? (
                         <CommentItem
                           key={newestUserComment.commentId}
@@ -448,10 +508,11 @@ export function ReviewsPage() {
                 reviewId={selectedReview.reviewId}
                 parentCommentId={rootComment?.commentId}
                 addNewComment={addNewComment}
-                onSent={reloadThread}
+                onSent={reloadThread} // Reload thread after sending a new reply
               />
             </div>
           ) : (
+            // Loading state for the modal content
             <div className="flex justify-center items-center h-20">
               <Loader2 className="h-6 w-6 animate-spin" />
             </div>
